@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+ <head>
+  <meta charset="UTF-8">
+  <title>
+   Snakebird &ndash; JS Tests
+  </title>
+  <link rel="shortcut icon" href="../../../MFTriangles.ico">
+  <script language="javascript" type="text/javascript" src="../js/ds.js"></script>
+  <script language="javascript" type="text/javascript" src="../js/GameState.js"></script>
+  <script language="javascript" type="text/javascript" src="test.js"></script>
+  <script language="javascript" type="text/javascript" src="samples.js"></script>
+  <script language="javascript" type="text/javascript" src="samplesInternal.js"></script>
+  <script language="javascript" type="text/javascript" src="GameState.test.js"></script>
+  <script language="javascript" type="text/javascript">
+   //<!--
+
+    const testFct = [GameStateTest];
+    const testNms = ['GameState'];
+    let lineNum = 0;
+
+    function main() {
+      let s = 0;
+      for (let i=0; i<testFct.length; i++) {
+        try {
+          testFct[i]();
+          console.info(successStatus(testNms[i] + " test passed."));
+          s++;
+        } catch (err) {
+          console.warn(warnStatus(testNms[i] + " test failed."));
+          console.error(err);
+          errorStatus(err.message);
+        }
+      }
+      console.info(infoStatus(s + " of " + testFct.length + " test(s) passed."));
+    }
+
+    function errorStatus(status) {
+      return printStatus("err", status);
+    }
+
+    function successStatus(status) {
+      return printStatus("succ", status);
+    }
+
+    function infoStatus(status) {
+      return printStatus("info", status);
+    }
+
+    function warnStatus(status) {
+      return printStatus("warn", status);
+    }
+
+    function printStatus(className, status) {
+      const div = document.createElement("div");
+      div.setAttribute("class", className + " status-div");
+      const spanLine = document.createElement("span");
+      const spanStat = document.createElement("span");
+      spanLine.innerHTML = ++lineNum;
+      spanStat.innerHTML = status;
+      spanLine.setAttribute("class", "line-num");
+      spanStat.setAttribute("class", "info-txt");
+      div.appendChild(spanLine);
+      div.appendChild(spanStat);
+      document.getElementById("status").appendChild(div);
+      return status;
+    }
+
+   //-->
+  </script>
+  <!--<link rel="stylesheet" type="text/css" href="XXX.css">-->
+  <style type="text/css">
+   
+   body {
+      font-family: 'Segoe UI', Roboto, Ubuntu, sans-serif;
+    }
+
+    h1, h2 {
+      font-weight: 300;
+    }
+
+    .status-div {
+      font-family: 'Ubuntu Mono', Consolas, monospace;
+    }
+
+    .info-txt, .line-num {
+      display: inline-block;
+      padding-right: 0.5em;
+      padding-left: 0.5em;
+      padding-top: 0.2em;
+      padding-bottom: 0.2em;
+    }
+
+    .warn .info-txt {
+      background-color: rgb(245, 236, 160);
+      color: rgb(204, 133, 0);
+    }
+
+    .err .info-txt {
+      background-color: rgb(245, 160, 160);
+      color: rgb(153, 3, 3);
+    }
+
+    .info .info-txt {
+      background-color: rgb(141, 210, 238);
+      color: rgb(4, 34, 167);
+    }
+
+    .succ .info-txt {
+      background-color: rgb(152, 238, 141);
+      color: rgb(39, 99, 4);
+    }
+
+    .line-num {
+      text-align: right;
+      width: 2em;
+      background-color: rgba(220, 220, 220, 1);
+      color: rgba(70, 70, 70, 1);
+    }
+
+    #status {
+      background-color: rgb(241, 241, 241);
+    }
+
+  </style>
+ </head>
+ <body onLoad="main();">
+  
+  <h1>Snakebird &ndash; JavaScript tests</h1>
+
+  <h2>Test status</h2>
+
+  <div id="status"></div>
+
+ </body>
+</html>
