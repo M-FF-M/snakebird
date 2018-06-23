@@ -66,7 +66,7 @@ function GET_SNAKE(val) {
  * @return {number} the block number
  */
 function GET_BLOCK(val) {
-  return (val >> 5);
+  return (val >> 5) - 1;
 }
 
 /**
@@ -75,6 +75,23 @@ function GET_BLOCK(val) {
  * @type {number}
  */
 const WRAP_AROUND = 1;
+/**
+ * Behavior of the setVal() method: for coordinates that are out of bounds, throw an error
+ * @type {number}
+ */
+const DEFAULT = 0;
+
+/**
+ * Behavior of the getVal() method: empty fields below the board, obstacles to the left and right
+ * @param {number[]} gravity the gravity direction
+ * @return {number} the corresponding constant
+ */
+function BLOCK_LEFT_RIGHT(gravity) {
+  if (gravity[0] == 1) return 2;
+  if (gravity[0] == -1) return 3;
+  if (gravity[1] == 1) return 4;
+  if (gravity[1] == -1) return 5;
+}
 
 /**
  * Represents a state in the Snakebird game
@@ -89,13 +106,15 @@ class GameState {
      * Contains the original state string that was passed in the consrtuctor
      * @type {string}
      */
-    this.stateStr = stateStr.replace(/\r?\n$/, '');
+    this.stateStr = '';
+    if (typeof stateStr === 'string') this.stateStr = stateStr.replace(/\r?\n$/, '');
     /**
      * Contains the game state as an array of strings, each entry represents one horizontal line
      * of the field
      * @type {string[]}
      */
-    this.lines = this.stateStr.split(/\r?\n/g);
+    this.lines = [''];
+    if (typeof stateStr === 'string') this.lines = this.stateStr.split(/\r?\n/g);
     /**
      * Possibly contains the two portal positions
      * @type {number[][]}
@@ -121,23 +140,25 @@ class GameState {
      * @type {boolean}
      */
     this.gameWon = false;
-    if (this.lines[0].search(/^[0-9]+ [0-9]+$/) != -1) {
-      this.lines = this.lines.slice(1);
-    }
-    if (this.lines[this.lines.length - 1]
-        .search(/^[0-9]+ [0-9]+ (won|lost|not over)(?: [0-9]+ [0-9]+ [0-9]+ [0-9]+)?$/) != -1) {
-      const lastline = this.lines[this.lines.length - 1];
-      this.lines = this.lines.slice(0, this.lines.length - 1);
-      const res = /^([0-9]+) ([0-9]+) (won|lost|not over)(?: ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+))?$/
-        .exec(lastline);
-      this.target = [parseInt(res[1]), parseInt(res[2])];
-      if (res[3] != 'not over') {
-        this.gameEnded = true;
-        if (res[3] == 'won') this.gameWon = true;
+    if (typeof stateStr === 'string') {
+      if (this.lines[0].search(/^[0-9]+ [0-9]+$/) != -1) {
+        this.lines = this.lines.slice(1);
       }
-      if ((typeof res[4] === 'string') && res[4].length > 0) {
-        this.portalPos.push([parseInt(res[4]), parseInt(res[5])]);
-        this.portalPos.push([parseInt(res[6]), parseInt(res[7])]);
+      if (this.lines[this.lines.length - 1]
+          .search(/^[0-9]+ [0-9]+ (won|lost|not over)(?: [0-9]+ [0-9]+ [0-9]+ [0-9]+)?$/) != -1) {
+        const lastline = this.lines[this.lines.length - 1];
+        this.lines = this.lines.slice(0, this.lines.length - 1);
+        const res = /^([0-9]+) ([0-9]+) (won|lost|not over)(?: ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+))?$/
+          .exec(lastline);
+        this.target = [parseInt(res[1]), parseInt(res[2])];
+        if (res[3] != 'not over') {
+          this.gameEnded = true;
+          if (res[3] == 'won') this.gameWon = true;
+        }
+        if ((typeof res[4] === 'string') && res[4].length > 0) {
+          this.portalPos.push([parseInt(res[4]), parseInt(res[5])]);
+          this.portalPos.push([parseInt(res[6]), parseInt(res[7])]);
+        }
       }
     }
     /**
@@ -185,76 +206,116 @@ class GameState {
      * @type {number[][]}
      */
     this.field = [];
-    for (let x=0; x<this.width; x++) {
-      this.field[x] = [];
-      for (let y=0; y<this.height; y++) {
-        this.field[x][y] = 0;
-        const c = this.lines[y][x];
-        if (c == 'X' || c == '$' || c == '?') { // target
-          if (c != 'X') {
-            this.gameEnded = true;
-            if (c == '$') this.gameWon = true;
-          }
-          this.target = [x, y];
-          this.field[x][y] = TARGET;
-        } else if (c == '@') { // fruit
-          this.fruits++;
-          this.field[x][y] = FRUIT;
-        } else if (c == '#') { // obstacle
-          this.field[x][y] = OBSTACLE;
-        } else if (c == '|') { // spike
-          this.field[x][y] = SPIKE;
-        } else if (c == '.') { // empty
-          this.field[x][y] = EMPTY;
-        } else if (c == '*') { // portal
-          if (this.portalPos.length < 2) this.portalPos.push([x, y]);
-          this.field[x][y] = PORTAL;
-        } else if (c == '<' || c == '>' || c == 'v' || c == '^') { // snake body
-
-        } else if (c.search(/^[A-W]$/) != -1) { // snake head
-          this.snakes.push(new Queue([[x, y]]));
-          this.snakeMap.set(c, this.snakes.length - 1);
-          this.snakeToCharacter.push(c);
-          this.field[x][y] = SNAKE(this.snakeMap.get(c));
-        } else if (c.search(/^[a-w]$/) != -1) { // block
-          if (this.blockMap.has(c)) {
-            this.blocks[this.blockMap.get(c)].pushBack([x, y]);
+    if (typeof stateStr === 'string') {
+      for (let x=0; x<this.width; x++) {
+        this.field[x] = [];
+        for (let y=0; y<this.height; y++) {
+          this.field[x][y] = 0;
+          const c = this.lines[y][x];
+          if (c == 'X' || c == '$' || c == '?') { // target
+            if (c != 'X') {
+              this.gameEnded = true;
+              if (c == '$') this.gameWon = true;
+            }
+            this.target = [x, y];
+            this.field[x][y] = TARGET;
+          } else if (c == '@') { // fruit
+            this.fruits++;
+            this.field[x][y] = FRUIT;
+          } else if (c == '#') { // obstacle
+            this.field[x][y] = OBSTACLE;
+          } else if (c == '|') { // spike
+            this.field[x][y] = SPIKE;
+          } else if (c == '.') { // empty
+            this.field[x][y] = EMPTY;
+          } else if (c == '*') { // portal
+            if (this.portalPos.length < 2) this.portalPos.push([x, y]);
+            this.field[x][y] = PORTAL;
+          } else if (c == '<' || c == '>' || c == 'v' || c == '^') { // snake body
+  
+          } else if (c.search(/^[A-U]$/) != -1) { // snake head
+            this.snakes.push(new Queue([[x, y]]));
+            this.snakeMap.set(c, this.snakes.length - 1);
+            this.snakeToCharacter.push(c);
+            this.field[x][y] = SNAKE(this.snakeMap.get(c));
+          } else if (c.search(/^[a-u]$/) != -1) { // block
+            if (this.blockMap.has(c)) {
+              this.blocks[this.blockMap.get(c)].pushBack([x, y]);
+            } else {
+              this.blocks.push(new Queue([[x, y]]));
+              this.blockMap.set(c, this.blocks.length - 1);
+              this.blockToCharacter.push(c);
+            }
+            this.field[x][y] = BLOCK(this.blockMap.get(c));
           } else {
-            this.blocks.push(new Queue([[x, y]]));
-            this.blockMap.set(c, this.blocks.length - 1);
-            this.blockToCharacter.push(c);
+            throw new Error(`Unexpected character ${c} at position (${x}, ${y})`);
           }
-          this.field[x][y] = BLOCK(this.blockMap.get(c));
-        } else {
-          throw new Error(`Unexpected character ${c} at position (${x}, ${y})`);
+        }
+      }
+      if (this.target.length == 0) throw new Error('Target position not specified');
+      if (this.fruits > 0) {
+        if (this.field[this.target[0]][this.target[1]] == TARGET)
+        this.field[this.target[0]][this.target[1]] = EMPTY;
+      }
+      for (let i=0; i<this.snakes.length; i++) {
+        let [cx, cy] = this.snakes[i].getBack();
+        while (true) {
+          if (this.getStrVal(cx + 1, cy, WRAP_AROUND) == '<') {
+            cx++; cx %= this.width; this.snakes[i].pushBack([cx, cy]);
+            this.field[cx][cy] = SNAKE(i);
+          } else if (this.getStrVal(cx - 1, cy, WRAP_AROUND) == '>') {
+            cx--; cx += this.width; cx %= this.width; this.snakes[i].pushBack([cx, cy]);
+            this.field[cx][cy] = SNAKE(i);
+          } else if (this.getStrVal(cx, cy + 1, WRAP_AROUND) == '^') {
+            cy++; cy %= this.height; this.snakes[i].pushBack([cx, cy]);
+            this.field[cx][cy] = SNAKE(i);
+          } else if (this.getStrVal(cx, cy - 1, WRAP_AROUND) == 'v') {
+            cy--; cy += this.height; cy %= this.height; this.snakes[i].pushBack([cx, cy]);
+            this.field[cx][cy] = SNAKE(i);
+          } else {
+            break;
+          }
         }
       }
     }
-    if (this.target.length == 0) throw new Error('Target position not specified');
-    if (this.fruits > 0) {
-      if (this.field[this.target[0]][this.target[1]] == TARGET)
-      this.field[this.target[0]][this.target[1]] = EMPTY;
-    }
+  }
+
+  /**
+   * Clone this GameState object
+   * @return {GameState} a new, identical GameState object
+   */
+  clone() {
+    const ret = new GameState();
+    ret.stateStr = this.stateStr;
+    for (let i=0; i<this.lines.length; i++) ret.lines[i] = this.lines[i];
+    for (let i=0; i<this.portalPos.length; i++)
+      ret.portalPos[i] = [this.portalPos[i][0], this.portalPos[i][1]];
+    ret.target = [this.target[0], this.target[1]];
+    ret.fruits = this.fruits;
+    ret.gameEnded = this.gameEnded;
+    ret.gameWon = this.gameWon;
+    ret.height = this.height;
+    ret.width = this.width;
     for (let i=0; i<this.snakes.length; i++) {
-      let [cx, cy] = this.snakes[i].getBack();
-      while (true) {
-        if (this.getStrVal(cx + 1, cy, WRAP_AROUND) == '<') {
-          cx++; cx %= this.width; this.snakes[i].pushBack([cx, cy]);
-          this.field[cx][cy] = SNAKE(i);
-        } else if (this.getStrVal(cx - 1, cy, WRAP_AROUND) == '>') {
-          cx--; cx += this.width; cx %= this.width; this.snakes[i].pushBack([cx, cy]);
-          this.field[cx][cy] = SNAKE(i);
-        } else if (this.getStrVal(cx, cy + 1, WRAP_AROUND) == '^') {
-          cy++; cy %= this.height; this.snakes[i].pushBack([cx, cy]);
-          this.field[cx][cy] = SNAKE(i);
-        } else if (this.getStrVal(cx, cy - 1, WRAP_AROUND) == 'v') {
-          cy--; cy += this.height; cy %= this.height; this.snakes[i].pushBack([cx, cy]);
-          this.field[cx][cy] = SNAKE(i);
-        } else {
-          break;
-        }
-      }
+      ret.snakes[i] = new Queue();
+      for (let k=0; k<this.snakes[i].length; k++)
+        ret.snakes[i].pushBack([this.snakes[i].get(k)[0], this.snakes[i].get(k)[1]]);
+      ret.snakeToCharacter[i] = this.snakeToCharacter[i];
+      ret.snakeMap.set(ret.snakeToCharacter[i], i);
     }
+    for (let i=0; i<this.blocks.length; i++) {
+      ret.blocks[i] = new Queue();
+      for (let k=0; k<this.blocks[i].length; k++)
+        ret.blocks[i].pushBack([this.blocks[i].get(k)[0], this.blocks[i].get(k)[1]]);
+      ret.blockToCharacter[i] = this.blockToCharacter[i];
+      ret.blockMap.set(ret.blockToCharacter[i], i);
+    }
+    for (let i=0; i<this.field.length; i++) {
+      ret.field[i] = [];
+      for (let k=0; k<this.field[i].length; k++)
+        ret.field[i][k] = this.field[i][k];
+    }
+    return ret;
   }
 
   /**
@@ -267,8 +328,23 @@ class GameState {
    * @return {number} the field value at the given position
    */
   getVal(x, y, behavior = EMPTY) {
-    if (x < 0 || y < 0 || x >= this.widht || y >= this.height) {
+    if (x < 0 || y < 0 || x >= this.width || y >= this.height) {
       if (behavior <= 0) return behavior;
+      if (behavior >= 2) {
+        if (behavior == 2) { // right
+          if (x < 0 || y < 0 || y >= this.height) return OBSTACLE;
+          else return EMPTY;
+        } else if (behavior == 3) { // left
+          if (x >= this.width || y < 0 || y >= this.height) return OBSTACLE;
+          else return EMPTY;
+        } else if (behavior == 4) { // down
+          if (x < 0 || y < 0 || x >= this.width) return OBSTACLE;
+          else return EMPTY;
+        } else { // up
+          if (x < 0 || y >= this.height || x >= this.width) return OBSTACLE;
+          else return EMPTY;
+        }
+      }
       while (x < 0) x += this.width; while (y < 0) y += this.height;
       x %= this.width; y %= this.height;
     }
@@ -285,17 +361,64 @@ class GameState {
    * @return {string} the field value (from the string representation) at the given position
    */
   getStrVal(x, y, behavior = EMPTY) {
-    if (x < 0 || y < 0 || x >= this.widht || y >= this.height) {
+    if (x < 0 || y < 0 || x >= this.width || y >= this.height) {
       if (behavior <= 0) {
         if (behavior == EMPTY) return '.';
         if (behavior == OBSTACLE) return '#';
         if (behavior == SPIKE) return '|';
         return '*';
       }
+      if (behavior >= 2) {
+        if (behavior == 2) { // right
+          if (x < 0 || y < 0 || y >= this.height) return '#';
+          else return '.';
+        } else if (behavior == 3) { // left
+          if (x >= this.width || y < 0 || y >= this.height) return '#';
+          else return '.';
+        } else if (behavior == 4) { // down
+          if (x < 0 || y < 0 || x >= this.width) return '#';
+          else return '.';
+        } else { // up
+          if (x < 0 || y >= this.height || x >= this.width) return '#';
+          else return '.';
+        }
+      }
       while (x < 0) x += this.width; while (y < 0) y += this.height;
       x %= this.width; y %= this.height;
     }
     return this.lines[y][x];
+  }
+
+  /**
+   * Set the value of a cell in the field
+   * @param {number} x the x coordinate (from the top left corner)
+   * @param {number} y the y coordinate (from the top left corner)
+   * @param {number} val the new value
+   * @param {number} [behavior] one of WRAP_AROUND, DEFAULT
+   */
+  setVal(x, y, val, behavior = DEFAULT) {
+    if (x < 0 || y < 0 || x >= this.width || y >= this.height) {
+      if (behavior == DEFAULT) throw new Error(`setVal: indices (${x},${y}) are out of bounds`);
+      while (x < 0) x += this.width; while (y < 0) y += this.height;
+      x %= this.width; y %= this.height;
+    }
+    this.field[x][y] = val;
+  }
+
+  /**
+   * Set the character value of a cell in the field
+   * @param {number} x the x coordinate (from the top left corner)
+   * @param {number} y the y coordinate (from the top left corner)
+   * @param {string} val the new character value
+   * @param {number} [behavior] one of WRAP_AROUND, DEFAULT
+   */
+  setStrVal(x, y, val, behavior = DEFAULT) {
+    if (x < 0 || y < 0 || x >= this.width || y >= this.height) {
+      if (behavior == DEFAULT) throw new Error(`setStrVal: indices (${x},${y}) are out of bounds`);
+      while (x < 0) x += this.width; while (y < 0) y += this.height;
+      x %= this.width; y %= this.height;
+    }
+    this.lines[y] = `${this.lines[y].substring(0, x)}${val}${this.lines[y].substring(x + 1, this.lines[y].length)}`;
   }
 
   /**

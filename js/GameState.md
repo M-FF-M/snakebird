@@ -15,8 +15,8 @@ coordinates of the two portals (again, separated by spaces).
 | `?`                | target, game was lost | `@`                | fruit                 |
 | `#`                | obstacle              | `|`                | spike                 |
 | `*`                | portal                | `.`                | empty                 |
-| `A` - `W`          | snake head            | `<`, `>`, `v`, `^` | snake body part       |
-| `a` - `w`          | movable block         |                    |                       |
+| `A` - `U`          | snake head            | `<`, `>`, `v`, `^` | snake body part       |
+| `a` - `u`          | movable block         |                    |                       |
 
 ## Examples
 

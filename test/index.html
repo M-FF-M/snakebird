@@ -8,15 +8,18 @@
   <link rel="shortcut icon" href="../../../MFTriangles.ico">
   <script language="javascript" type="text/javascript" src="../js/ds.js"></script>
   <script language="javascript" type="text/javascript" src="../js/GameState.js"></script>
+  <script language="javascript" type="text/javascript" src="../js/gameTransition.js"></script>
   <script language="javascript" type="text/javascript" src="test.js"></script>
   <script language="javascript" type="text/javascript" src="samples.js"></script>
   <script language="javascript" type="text/javascript" src="samplesInternal.js"></script>
+  <script language="javascript" type="text/javascript" src="fallSamples.js"></script>
   <script language="javascript" type="text/javascript" src="GameState.test.js"></script>
+  <script language="javascript" type="text/javascript" src="gameTransition.test.js"></script>
   <script language="javascript" type="text/javascript">
    //<!--
 
-    const testFct = [GameStateTest];
-    const testNms = ['GameState'];
+    const testFct = [GameStateTest, gameTransitionTest];
+    const testNms = ['GameState', 'gameTransition'];
     let lineNum = 0;
 
     function main() {
