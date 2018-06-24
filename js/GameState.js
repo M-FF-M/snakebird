@@ -57,7 +57,7 @@ function BLOCK(blockNum) {
  * @return {number} the snake number
  */
 function GET_SNAKE(val) {
-  return (val % 32) - 1;
+  return val - 1;
 }
 
 /**
@@ -66,7 +66,7 @@ function GET_SNAKE(val) {
  * @return {number} the block number
  */
 function GET_BLOCK(val) {
-  return (val >> 5) - 1;
+  return val - 32;
 }
 
 /**
