@@ -1,0 +1,11 @@
+
+const stdSolutions = [
+  [FOUND_SOLUTION, 3],
+  [NOT_POSSIBLE],
+  [FOUND_SOLUTION, 6],
+  [NOT_POSSIBLE],
+  [FOUND_SOLUTION, 6],
+  [FOUND_SOLUTION, 2],
+  [NOT_POSSIBLE],
+  [TIME_LIMIT]
+];
