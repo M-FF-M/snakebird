@@ -333,10 +333,10 @@ function move(gameState, alreadySeen, snakesStatic, blocksStatic, dir = DOWN, fa
           } else {
             let nval1 = '!';
             const diffx = pos[0] - lastx, diffy = pos[1] - lasty;
-            if (diffx == 1) nval1 = '<';
-            else if (diffx == -1) nval1 = '>';
-            else if (diffy == 1) nval1 = '^';
-            else if (diffy == -1) nval1 = 'v';
+            if (diffx == 1 || diffx == 1 - gameState.width) nval1 = '<';
+            else if (diffx == -1 || diffx == gameState.width - 1) nval1 = '>';
+            else if (diffy == 1 || diffy == 1 - gameState.height) nval1 = '^';
+            else if (diffy == -1 || diffy == gameState.height - 1) nval1 = 'v';
             gameState.setStrVal(pos[0], pos[1], nval1); // set appropriate character
           }
           const nval2 = isSnake ? SNAKE(idx) : BLOCK(idx); // appropriate new field value
@@ -426,10 +426,10 @@ function move(gameState, alreadySeen, snakesStatic, blocksStatic, dir = DOWN, fa
           } else {
             let nval1 = '!';
             const diffx = pos[0] - lastx, diffy = pos[1] - lasty;
-            if (diffx == 1) nval1 = '<';
-            else if (diffx == -1) nval1 = '>';
-            else if (diffy == 1) nval1 = '^';
-            else if (diffy == -1) nval1 = 'v';
+            if (diffx == 1 || diffx == 1 - gameState.width) nval1 = '<';
+            else if (diffx == -1 || diffx == gameState.width - 1) nval1 = '>';
+            else if (diffy == 1 || diffy == 1 - gameState.height) nval1 = '^';
+            else if (diffy == -1 || diffy == gameState.height - 1) nval1 = 'v';
             gameState.setStrVal(pos[0], pos[1], nval1); // set appropriate character
           }
           const nval2 = isSnake ? SNAKE(idx) : BLOCK(idx); // appropriate new field value
@@ -463,6 +463,8 @@ function move(gameState, alreadySeen, snakesStatic, blocksStatic, dir = DOWN, fa
   }
 
   targetInds = targetInds.sort((a, b) => b - a);
+  const origSnakeInds = []; // saves the original snake indices
+  for (let i=0; i<gameState.snakes.length; i++) origSnakeInds[i] = i;
   for (let i=0; i<targetInds.length; i++) {
     const targetInd = targetInds[i];
     if (targetInd != -1 && !deadArr.includes(targetInd)) { // delete snake that reached the target
@@ -473,16 +475,24 @@ function move(gameState, alreadySeen, snakesStatic, blocksStatic, dir = DOWN, fa
         gameState.snakeToCharacter[i] = gameState.snakeToCharacter[i + 1]; // delete from snakeToCharacter array
         gameState.snakeMap[ gameState.snakeToCharacter[i] ] = i; // update snakeMap
         snakesStatic[i] = snakesStatic[i + 1];
-        const cs = gameState.snakes[i];
-        for (let q=0; q<cs.length; q++) {
-          const pos = cs.get(q);
-          gameState.setVal(pos[0], pos[1], SNAKE(i)); // update gameState.field
+        origSnakeInds[i] = origSnakeInds[i + 1];
+        if (!deadArr.includes(origSnakeInds[i]) && !targetInds.includes(origSnakeInds[i])) {
+          // if snake is still present on the field: update gameState.field
+          const cs = gameState.snakes[i];
+          for (let q=0; q<cs.length; q++) {
+            const pos = cs.get(q);
+            if (pos[0] < 0 || pos[1] < 0 || pos[0] >= gameState.width || pos[1] >= gameState.height
+                || gameState.getVal(pos[0], pos[1]) != SNAKE(i + 1))
+              break; // apparently, this snake isn't present on the field, after all
+            gameState.setVal(pos[0], pos[1], SNAKE(i)); // update gameState.field
+          }
         }
       }
       gameState.snakes.pop();
       gameState.snakeToCharacter.pop();
       gameState.snakeMap.delete(snChar);
       snakesStatic.pop();
+      origSnakeInds.pop();
     }
   }
 
