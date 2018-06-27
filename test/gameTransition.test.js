@@ -2,16 +2,20 @@
 function gameTransitionTest() {
   for (let i=0; i<fallSamplesIn.length; i++) {
     let st = new GameState(fallSamplesIn[i]);
+    const numSn = st.snakes.length;
     const res = gameTransition(st, null, []);
-    assertStrictEqual(JSON.stringify(res.slice(0, 3)), methodRetVal[i]);
     st = res[3];
     if (i < fallSamplesExternal.length) {
+      assertStrictEqual(JSON.stringify(res.slice(0, 3)), methodRetVal[i]);
+      assertStrictEqual(JSON.stringify(convertToFullArray(res[2], numSn)), fullArrRetVal[i]);
       assertStrictEqual(st.toString(), fallSamplesExternal[i]);
       assertStrictEqual(st.internalToString(), fallSamplesInternal[i]);
     } else {
       console.warn(`Skipped test ${(i+1)} in gameTransition -- standard cases`);
       console.log(st.toString());
       console.log(st.internalToString());
+      console.log(JSON.stringify(res.slice(0, 3)));
+      console.log(JSON.stringify(convertToFullArray(res[2], numSn)));
     }
   }
 
@@ -93,6 +97,39 @@ function gameTransitionTest() {
       }
     }
   }
+
+  state = new GameState(specialBlockingMoveSamples[0]);
+  result = gameTransition(state, 'R', LEFT);
+  state = result[3];
+  assertStrictEqual(state.toString(), specialBlockingMoveSamplesSol[0][0]);
+  assertStrictEqual(state.internalToString(), specialBlockingMoveSamplesSol[0][1]);
+  assertStrictEqual(JSON.stringify(result.slice(0, 3)), specialBlockingMoveSamplesSol[0][2]);
+
+  ALLOW_MOVING_WITHOUT_SPACE = false;
+  result = gameTransition(state, 'R', LEFT);
+  assertStrictEqual(result, null);
+  ALLOW_MOVING_WITHOUT_SPACE = true;
+
+  state = new GameState(specialBlockingMoveSamples[1]);
+  result = gameTransition(state, 'R', RIGHT);
+  assertStrictEqual(result, null);
+
+  ALLOW_MOVING_WITHOUT_SPACE = false;
+  result = gameTransition(state, 'R', RIGHT);
+  assertStrictEqual(result, null);
+  ALLOW_MOVING_WITHOUT_SPACE = true;
+
+  state = new GameState(specialBlockingMoveSamples[2]);
+  result = gameTransition(state, 'R', RIGHT);
+  state = result[3];
+  assertStrictEqual(state.toString(), specialBlockingMoveSamplesSol[1][0]);
+  assertStrictEqual(state.internalToString(), specialBlockingMoveSamplesSol[1][1]);
+  assertStrictEqual(JSON.stringify(result.slice(0, 3)), specialBlockingMoveSamplesSol[1][2]);
+
+  ALLOW_MOVING_WITHOUT_SPACE = false;
+  result = gameTransition(state, 'R', RIGHT);
+  assertStrictEqual(result, null);
+  ALLOW_MOVING_WITHOUT_SPACE = true;
 
   /*moves = [
     [['R', RIGHT], ['R', RIGHT], ['R', DOWN], ['R', RIGHT], ['R', RIGHT]],

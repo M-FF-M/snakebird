@@ -1,5 +1,11 @@
 
 /**
+ * If set to true, a snake that is blocked by an object on both sides can still move the object
+ * (if there's enough space on the rest of the board)
+ * @type {boolean}
+ */
+let ALLOW_MOVING_WITHOUT_SPACE = true;
+/**
  * Indicates movement to the left
  * @type {number[]}
  */
@@ -44,6 +50,51 @@ const ENDLESS_LOOP = -1;
  * @type {number}
  */
 const OUT_OF_BOARD_ONTO_SPIKE = -2;
+
+/**
+ * Converts the array returned by gameTransition() at index 2 into an array where snakes
+ * are not deleted after reaching the target and where the time that is required for
+ * portation and target reached animations is taken into account
+ * @param {number[][]} resArr the array returned by gameTransition() at index 2
+ * @param {number} snakeNum the number of snakes (in the original game state)
+ * @return {number[][]} the modified array
+ */
+function convertToFullArray(resArr, snakeNum) {
+  const retArr = [];
+  const numObj = resArr[0].length;
+  const objRemAt = [];
+  for (let i=0; i<resArr.length; i++) {
+    const ri = retArr.length;
+    retArr.push([]); let duplicateNum = 0;
+    const duplArr = [];
+    for (let k=0, cidx=0; k<numObj; k++, cidx++) {
+      if (objRemAt.includes(k)) {
+        retArr[ri].push([-500, -500]);
+        duplArr.push([-500, -500]);
+        if (k < snakeNum) cidx--;
+      } else {
+        const posArr = resArr[i][cidx];
+        retArr[ri].push(posArr.slice());
+        if (posArr.length == 3) {
+          objRemAt.push(k);
+          duplArr.push(posArr.slice(0, 2));
+          if (posArr[2] == 2 && duplicateNum == 0) duplicateNum = 1;
+        }
+        else if (posArr.length == 2) duplArr.push(posArr.slice(0, 2));
+        else if (posArr.length == 6) {
+          if (duplicateNum == 0) duplicateNum = 1;
+          duplArr.push(posArr.slice(2, 4));
+        }
+        else if (posArr.length == 7) {
+          duplicateNum = 2;
+          duplArr.push(posArr.slice(2, 4));
+        }
+      }
+    }
+    for (let q=0; q<duplicateNum; q++) retArr.push(duplArr);
+  }
+  return retArr;
+}
 
 /**
  * Calculate the transition from one game state to another when one snake is moved in a specific
@@ -119,13 +170,15 @@ function gameTransition(gameState, snake, direction, fallThrough = false, gravit
   pushCurPos();
 
   if (snake !== null) {
-    const moveSnake = (cs, nx, ny, snIdx, newSnIdx, ate) => {
+    const moveSnake = (cs, nx, ny, snIdx, newSnIdx, ate, removeLast = true) => {
       retArr[retArr.length - 1][snIdx][0] += direction[0]; // update retArr: set new snake head position
       retArr[retArr.length - 1][snIdx][1] += direction[1];
       if (!ate) {
         const lastpos = cs.popBack(); // the snake didn't eat a fruit --> remove last body part
-        gameState.setStrVal(lastpos[0], lastpos[1], '.');
-        gameState.setVal(lastpos[0], lastpos[1], EMPTY);
+        if (removeLast) {
+          gameState.setStrVal(lastpos[0], lastpos[1], '.');
+          gameState.setVal(lastpos[0], lastpos[1], EMPTY);
+        }
       }
       if (cs.length > 0) { // update character value of second body part
         const firstpos = cs.getFront();
@@ -155,14 +208,21 @@ function gameTransition(gameState, snake, direction, fallThrough = false, gravit
       fallThrough ? WRAP_AROUND : BLOCK_LEFT_RIGHT(gravity)); // value at new position
     if (val > 0) { // snake or block blocks the new position -- try to move them
       snakesStatic[snIdx] = true;
+      if (val == SNAKE(snIdx)) return null;
       const val2 = val >= 32 ? GET_BLOCK(val) + snakesStatic.length : GET_SNAKE(val);
+      if (ALLOW_MOVING_WITHOUT_SPACE) {
+        const lastpos = cs.getBack(); // the snake didn't eat a fruit --> already remove last body part
+                                      // to make room for other objects
+        gameState.setStrVal(lastpos[0], lastpos[1], '.');
+        gameState.setVal(lastpos[0], lastpos[1], EMPTY);
+      }
       const res = move(gameState, new Map(), snakesStatic, blocksStatic, direction, gravity, fallThrough, val2);
       if (res[0] == ALL_STATIC) return null;
       if (res[0] == ENDLESS_LOOP) throw new Error('There can\'t be an endless loop after the first move');
       if (res[0] == GAME_WON) throw new Error('The game can\'t have been won after one move when the first move was to move other objects');
       retArr.push(res[1]);
       nSnIdx = res[4][snIdx]; // the snake index might have changed due to a snake entering the target
-      moveSnake(cs, nx, ny, snIdx, nSnIdx, false);
+      moveSnake(cs, nx, ny, snIdx, nSnIdx, false, !ALLOW_MOVING_WITHOUT_SPACE);
       if (res[0] == OUT_OF_BOARD_ONTO_SPIKE) {
         reinsertTargetAndPortals(gameState);
         if (moveInfo) return [ateFruit, OUT_OF_BOARD_ONTO_SPIKE, retArr, gameState];
@@ -727,7 +787,7 @@ function removeSnakeFromField(gameState, origSnakeInds, snakesStatic, remIdx, de
   for (let i=remIdx; i<gameState.snakes.length - 1; i++) {
     gameState.snakes[i] = gameState.snakes[i + 1]; // delete from snakes array
     gameState.snakeToCharacter[i] = gameState.snakeToCharacter[i + 1]; // delete from snakeToCharacter array
-    gameState.snakeMap[ gameState.snakeToCharacter[i] ] = i; // update snakeMap
+    gameState.snakeMap.set(gameState.snakeToCharacter[i], i); // update snakeMap
     snakesStatic[i] = snakesStatic[i + 1];
     origSnakeInds[i] = origSnakeInds[i + 1];
     let presentCheck = true;
@@ -764,7 +824,7 @@ function removeBlockFromField(gameState, origBlockInds, blocksStatic, remIdx) {
   for (let i=remIdx; i<gameState.blocks.length - 1; i++) {
     gameState.blocks[i] = gameState.blocks[i + 1]; // delete from blocks array
     gameState.blockToCharacter[i] = gameState.blockToCharacter[i + 1]; // delete from blockToCharacter array
-    gameState.blockMap[ gameState.blockToCharacter[i] ] = i; // update blockMap
+    gameState.blockMap.set(gameState.blockToCharacter[i], i); // update blockMap
     blocksStatic[i] = blocksStatic[i + 1];
     origBlockInds[i] = origBlockInds[i + 1];
     // if block is still present on the field: update gameState.field

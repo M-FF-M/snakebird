@@ -6,11 +6,20 @@
    Snakebird
   </title>
   <link rel="shortcut icon" href="../../MFTriangles.ico">
+  <script language="javascript" type="text/javascript" src="js/levels/std_lvls.js"></script>
+  <script language="javascript" type="text/javascript" src="js/ds.js"></script>
+  <script language="javascript" type="text/javascript" src="js/GameState.js"></script>
+  <script language="javascript" type="text/javascript" src="js/gameTransition.js"></script>
+  <script language="javascript" type="text/javascript" src="js/GameSolver.js"></script>
+  <script language="javascript" type="text/javascript" src="js/GameDrawer.js"></script>
+  <script language="javascript" type="text/javascript" src="js/GameBoard.js"></script>
   <script language="javascript" type="text/javascript">
    //<!--
 
+    let board;
+
     function main() {
-      
+      board = new GameBoard(document.body, new GameState(levels[2])); 
     }
 
    //-->
