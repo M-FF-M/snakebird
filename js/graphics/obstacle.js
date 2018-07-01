@@ -1,4 +1,16 @@
 
+/**
+ * Draws an obstacle on the given canvas
+ * @param {CanvasRenderingContext2D} con the context of the canvas the obstacle should be drawn on
+ * @param {number} bx the x coordinate of the center of the grid cell
+ * @param {number} by the y coordinate of the center of the grid cell
+ * @param {number[]} adjVals an array containing the values in the adjacent grid cells
+ * (0: left, 1: right, 2: top, 3: bottom, 4: top left, 5: top right, 6: bottom right, 7: bottom left)
+ * @param {number} bSize the width and height of the grid cell
+ * @param {number} sx the x coordinate of the grid cell in the game state array
+ * @param {number} sy the y coordinate of the grid cell in the game state array
+ * @param {number} globalTime a number between 0 and 1 that is used for cyclic animations
+ */
 function drawObstacle(con, bx, by, adjVals, bSize, sx, sy, globalTime) {
   const osc = Math.sin(globalTime * 2 * Math.PI);
 

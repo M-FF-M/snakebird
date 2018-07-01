@@ -6,6 +6,14 @@
    Snakebird
   </title>
   <link rel="shortcut icon" href="../../MFTriangles.ico">
+  <script language="javascript" type="text/javascript">
+   //<!--
+
+    let FONTS_WERE_LOADED = false;
+
+   //-->
+  </script>
+  <script src="https://ajax.googleapis.com/ajax/libs/webfont/1.6.26/webfont.js"></script>
   <script language="javascript" type="text/javascript" src="js/levels/std_lvls.js"></script>
   <script language="javascript" type="text/javascript" src="js/ds.js"></script>
   <script language="javascript" type="text/javascript" src="js/GameState.js"></script>
@@ -13,29 +21,41 @@
   <script language="javascript" type="text/javascript" src="js/GameSolver.js"></script>
   <script language="javascript" type="text/javascript" src="js/graphics/spikes.js"></script>
   <script language="javascript" type="text/javascript" src="js/graphics/obstacle.js"></script>
+  <script language="javascript" type="text/javascript" src="js/graphics/button.js"></script>
   <script language="javascript" type="text/javascript" src="js/GameDrawer.js"></script>
   <script language="javascript" type="text/javascript" src="js/GameBoard.js"></script>
   <script language="javascript" type="text/javascript">
    //<!--
 
-    let board;
+    let board, htmlWasLoaded = false, fontWasLoaded = false;
+
+    WebFont.load({
+      google: {
+        families: ['Fredoka One']
+      },
+      active: () => fontsLoaded()
+    });
+
+    function fontsLoaded() {
+      FONTS_WERE_LOADED = true;
+      if (board) board.redraw();
+    }
 
     function main() {
-      board = new GameBoard(document.body, new GameState(levels[0]), false); 
+      if (!board)
+        board = new GameBoard(document.body, new GameState(levels[2]), false);
     }
+
+    document.addEventListener('DOMContentLoaded', () => main());
 
    //-->
   </script>
   <!--<link rel="stylesheet" type="text/css" href="XXX.css">-->
   <style type="text/css">
    
-    
-
   </style>
  </head>
  <body onLoad="main();">
   
-  
-
  </body>
 </html>

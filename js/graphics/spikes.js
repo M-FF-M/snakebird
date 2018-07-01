@@ -1,4 +1,13 @@
 
+/**
+ * Draws a spike on the given canvas
+ * @param {CanvasRenderingContext2D} con the context of the canvas the spike should be drawn on
+ * @param {number} bx the x coordinate of the center of the grid cell
+ * @param {number} by the y coordinate of the center of the grid cell
+ * @param {number[]} adjVals an array containing the values in the adjacent grid cells
+ * (0: left, 1: right, 2: top, 3: bottom, 4: top left, 5: top right, 6: bottom right, 7: bottom left)
+ * @param {number} bSize the width and height of the grid cell
+ */
 function drawSpike(con, bx, by, adjVals, bSize) {
   // connection to obstacles
   con.fillStyle = 'rgba(89, 99, 110, 1)';

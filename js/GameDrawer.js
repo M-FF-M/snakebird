@@ -1,6 +1,20 @@
 
+/**
+ * Whether to turn off cyclic animations for development purposes
+ * @type {boolean}
+ */
+const TURN_OFF_CYCLIC_ANIMATIONS = false;
+
+/**
+ * Specifies the margin around the game board (in pixels)
+ * @type {number}
+ */
 const MARGIN = 20;
 
+/**
+ * Specifies the color of a snake with a given character
+ * @type {object}
+ */
 const COLOR_MAP = {
   A: 'rgba(233, 30, 99, 1)', B: 'rgba(33, 150, 243, 1)', C: 'rgba(156, 39, 176, 1)',
   D: 'rgba(103, 58, 183, 1)', E: 'rgba(63, 81, 181, 1)', F: 'rgba(3, 169, 244, 1)',
@@ -11,6 +25,10 @@ const COLOR_MAP = {
   S: 'rgba(102, 0, 51, 1)', T: 'rgba(0, 51, 102, 1)', U: 'rgba(102, 153, 0, 1)'
 };
 
+/**
+ * Specifies how long one animation step (moving one grid cell) takes (in milliseconds)
+ * @type {number}
+ */
 const STEP_LENGTH = 150;
 
 /**
@@ -63,11 +81,20 @@ class GameDrawer {
     this._blockQueues = stClone.blocks;
     this._fallThrough = fallThrough;
     this._clickListeners = [];
+    this._absoluteClickListeners = [];
     this._canvas.addEventListener('click', this.click);
+    this.draw();
   }
 
+  /**
+   * Try to move a snake
+   * @param {string} snake the character corresponding to the snake that should be moved
+   * @param {number[]} direction the direction of the movement (LEFT, RIGHT, UP or DOWN)
+   * @param {number[]} gravity the direction of gravity (LEFT, RIGHT, UP or DOWN)
+   * @return {GameState} the new game state (or the old one if the move was invalid)
+   */
   tryMove(snake, direction, gravity = DOWN) {
-    if (!this._animationRunning) {
+    if (!this._animationRunning && this._state.snakeMap.has(snake)) {
       const moveRes = gameTransition(this._state, snake, direction, this._fallThrough, gravity);
       if (moveRes !== null) {
         this._aniSnakeMoveInd = this._state.snakeMap.get(snake);
@@ -82,7 +109,6 @@ class GameDrawer {
         this._aniLength = this._aniArray.length - 1;
         this._animationRunning = true;
         this._aniStartTime = (new Date()).getTime();
-        // /**/ this._state = this._newState;
         this.draw();
         return this._newState;
       }
@@ -90,17 +116,47 @@ class GameDrawer {
     return this._state;
   }
 
-  addEventListener(type, listener) {
-    if (type === 'click') {
-      this._clickListeners.push(listener);
+  /**
+   * Set the game state
+   * @param {GameState} state the new game state
+   */
+  setState(state) {
+    if (!this._animationRunning) {
+      this._state = state;
+      this._boardWidth = this._state.width;
+      this._boardHeight = this._state.height;
+      const stClone = this._state.clone();
+      this._snakeQueues = stClone.snakes;
+      this._blockQueues = stClone.blocks;
+      this.draw();
     }
   }
 
+  /**
+   * Add an event listener to this game drawer
+   * @param {string} type a string specifying the type of event the listener should listen to. Currently,
+   * only 'click' and 'absolute click' is supported - 'click' listens for clicks on grid cells,
+   * 'absolute click' for general clicks on the canvas. The respective event handlers will be called
+   * with the coordinates of the grid cell and the absolute mouse coordinates, respectively.
+   * @param {Function} listener the event listener that will be called when the specified event occurred
+   */
+  addEventListener(type, listener) {
+    if (type === 'click') {
+      this._clickListeners.push(listener);
+    } else if (type === 'absolute click') {
+      this._absoluteClickListeners.push(listener);
+    }
+  }
+
+  /**
+   * This method should be called when a 'click' event was detetcted
+   * @param {object} event the event object
+   */
   click(event) {
     if (!this._animationRunning) {
       let [xp, yp] = [event.clientX, event.clientY];
       const [w, h, ax, ay, bSize, bCoord] = this.getDimVars();
-      xp -= this._x + ax; yp -= this._y + ay;
+      xp -= ax; yp -= ay;
       if (xp >= 0 && yp >= 0 && xp < w && yp < h) {
         const [xb, yb] = [Math.floor(xp / bSize), Math.floor(yp / bSize)];
         for (let i=0; i<this._clickListeners.length; i++) {
@@ -108,8 +164,17 @@ class GameDrawer {
         }
       }
     }
+    for (let i=0; i<this._absoluteClickListeners.length; i++)
+      this._absoluteClickListeners[i](event.clientX, event.clientY);
   }
 
+  /**
+   * Resize this game drawer
+   * @param {number} x the x coordinate of the top left corner of the game board on the canvas
+   * @param {number} y the y coordinate of the top left corner of the game board on the canvas
+   * @param {number} width the width of the game board on the canvas
+   * @param {number} height the height of the game board on the canvas
+   */
   resize(x, y, width, height) {
     this._x = x;
     this._y = y;
@@ -118,6 +183,18 @@ class GameDrawer {
     this.draw();
   }
 
+  /**
+   * Calculate various dimension variables
+   * @return {number[]} an array [w, h, ax, ay, bSize, bCoord] where
+   * - w is the actual width of the game board on the canvas (excluding margin, with the right aspect ratio)
+   * - h is the actual height of the game board on the canvas (excluding margin, with the right aspect ratio)
+   * - ax is the actual x coordinate of the top left corner of the game board
+   * - ay is the actual y coordinate of the top left corner of the game board
+   * - bSize is the size of one grid cell
+   * - bCoord is a function that takes the x and y coordinates of a grid cell in the game state array
+   *   as parameters and returns an array with the corresponding x and y coordinates of the center
+   *   of the grid cell on the canvas
+   */
   getDimVars() {
     const [x, y, width, height, bWidth, bHeight] = [this._x, this._y, this._width,
       this._height, this._boardWidth, this._boardHeight];
@@ -140,6 +217,11 @@ class GameDrawer {
     return [w, h, ax, ay, bSize, bCoord];
   }
 
+  /**
+   * Draw the current game state
+   * @param {boolean} [isAniFrame] whether or not this method should automatically call draw() again
+   * to animate the game board
+   */
   draw(isAniFrame = false) {
     const [con, x, y, width, height, bWidth, bHeight] = [this._context, this._x, this._y, this._width,
       this._height, this._boardWidth, this._boardHeight];
@@ -209,11 +291,27 @@ class GameDrawer {
     con.fillRect(ax + w, y, width - ax - w, height);
     con.fillRect(x, ay + h, width, height - ay - h); */
 
-    if (isAniFrame) {
-      window.requestAnimationFrame(() => this.draw(true));
+    if (!TURN_OFF_CYCLIC_ANIMATIONS) {
+      if (isAniFrame) {
+        window.requestAnimationFrame(() => this.draw(true));
+      }
+    } else {
+      if (this._animationRunning) {
+        window.requestAnimationFrame(() => this.draw());
+      }
     }
   }
 
+  /**
+   * Draw the board without moving objects (such as snakes or blocks)
+   * @param {GameState} state the (old) game state
+   * @param {CanvasRenderingContext2D} con the context of the canvas
+   * @param {number} bSize the size of a single grid cell
+   * @param {Function} bCoord a function that takes the x and y coordinates of a grid cell in the game
+   * state array as parameters and returns an array with the corresponding x and y coordinates of the
+   * center of the grid cell on the canvas
+   * @param {number} globalTime a number between 0 and 1 that is used for cyclic animations
+   */
   drawBoard(state, con, bSize, bCoord, globalTime) {
     for (let sx=0; sx<state.width; sx++) {
       for (let sy=0; sy<state.height; sy++) {
@@ -255,6 +353,21 @@ class GameDrawer {
     }
   }
 
+  /**
+   * Draw a single snake
+   * @param {GameState} state the (old) game state
+   * @param {CanvasRenderingContext2D} con the context of the canvas
+   * @param {number} bSize the size of a single grid cell
+   * @param {Function} bCoord a function that takes the x and y coordinates of a grid cell in the game
+   * state array as parameters and returns an array with the corresponding x and y coordinates of the
+   * center of the grid cell on the canvas
+   * @param {Queue} partQ a queue with the body parts of the snake
+   * @param {string} color the color of the snake
+   * @param {number[]} offset the offset the snake should be moved by
+   * @param {number} [mvSnProg] if not -1, either between 0 and 1, specifying the progress of the first
+   * movement of the snake's head or 2, specifying that the snake already moved its head (if it is -1,
+   * this snake only falls but was not actively moved by the player)
+   */
   drawSnake(state, con, bSize, bCoord, partQ, color, offset, mvSnProg = -1) {
     con.fillStyle = color;
     let len = partQ.length;
@@ -287,6 +400,18 @@ class GameDrawer {
     }
   }
 
+  /**
+   * Draw a single block
+   * @param {GameState} state the (old) game state
+   * @param {CanvasRenderingContext2D} con the context of the canvas
+   * @param {number} bSize the size of a single grid cell
+   * @param {Function} bCoord a function that takes the x and y coordinates of a grid cell in the game
+   * state array as parameters and returns an array with the corresponding x and y coordinates of the
+   * center of the grid cell on the canvas
+   * @param {Queue} partQ a queue with the parts of the block
+   * @param {string} color the color of the block
+   * @param {number[]} offset the offset the block should be moved by
+   */
   drawBlock(state, con, bSize, bCoord, partQ, color, offset) {
     con.fillStyle = color;
     for (let i=0; i<partQ.length; i++) {
@@ -299,6 +424,15 @@ class GameDrawer {
     }
   }
 
+  /**
+   * Get all offsets a single cell of a snake or a block should be drawn on. This is necessary if the
+   * fallThrough option is enabled: in this case, parts of objects that overlap the game board border
+   * have to be drawn on the other side of the board as well.
+   * @param {GameState} state the (old) game state
+   * @param {number} x the x coordinate of the cell in the game state array
+   * @param {number} y the y coordinate of the cell in the game state array
+   * @param {number[]} off the offset the part of the object should be moved by
+   */
   _getAllOffsets(state, x, y, off) {
     let [ox, oy] = [x + off[0], y + off[1]];
     const drawAt = [[0, 0]]; // if the part is at the border of the board, draw it on the other side of
@@ -313,6 +447,14 @@ class GameDrawer {
     return [ox, oy, drawAt];
   }
 
+  /**
+   * Adapt the nextPos array, if necessary (if the fallThrough option is enabled, snakes that move
+   * through the border of the board shouldn't be animated as being ported across the whole board, they
+   * should just move as usual -- this can require an adaption of the nextPos array).
+   * @param {number[]} lastPos the last position of the object
+   * @param {number[]} nextPos the new position of the object
+   * @return {number[]} the adapted nextPos array
+   */
   _checkPosChange(lastPos, nextPos) {
     if (Math.abs(nextPos[0] - lastPos[0]) > 1) {
       nextPos = nextPos.slice();

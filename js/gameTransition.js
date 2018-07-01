@@ -105,7 +105,8 @@ function convertToFullArray(resArr, snakeNum) {
  * of the objects will be simulated.
  * @param {number[]} direction the direction of the snake movement  (one of LEFT, RIGHT, UP, DOWN)
  * @param {boolean} [fallThrough] if set to true, snakes and objects that fall out of the board
- * will appear again at the top
+ * will appear again at the top (and if they leave the board through the left border, they appear
+ * again at the right side of the board)
  * @param {number[]} [gravity] the direction of gravity (one of LEFT, RIGHT, UP, DOWN)
  * @param {boolean} [moveInfo] whether to include detailed move info in the response (see description
  * below; if set to false, the method will return the GameState object which is normally returned
