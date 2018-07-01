@@ -181,7 +181,8 @@ class GameBoard {
   restart() {
     this._stateStackIdx = 0;
     while (this._stateStack.length > 1) this._stateStack.pop();
-    this._drawer.setState(new GameState(this._stateStack[this._stateStackIdx]));
+    this._state = new GameState(this._stateStack[this._stateStackIdx]);
+    this._drawer.setState(this._state);
     this.extraMoveCounter += this.moveCounter;
     this.moveCounter = 0;
     this.drawInfoLine();
@@ -193,7 +194,8 @@ class GameBoard {
   undo() {
     if (this._stateStackIdx > 0) {
       this._stateStackIdx--;
-      this._drawer.setState(new GameState(this._stateStack[this._stateStackIdx]));
+      this._state = new GameState(this._stateStack[this._stateStackIdx]);
+      this._drawer.setState(this._state);
       this.moveCounter--;
       this.extraMoveCounter++;
       this.drawInfoLine();
@@ -206,7 +208,8 @@ class GameBoard {
   redo() {
     if (this._stateStackIdx < this._stateStack.length - 1) {
       this._stateStackIdx++;
-      this._drawer.setState(new GameState(this._stateStack[this._stateStackIdx]));
+      this._state = new GameState(this._stateStack[this._stateStackIdx]);
+      this._drawer.setState(this._state);
       this.moveCounter++;
       this.extraMoveCounter--;
       this.drawInfoLine();
@@ -255,15 +258,15 @@ class GameBoard {
    */
   press(event) {
     const key = event.key.toLowerCase();
-    const oldState = this._state.toString();
+    const oldState = this._state.toString(); let check = false;
     if (key === 'a' || key === 'arrowleft') {
-      this._state = this._drawer.tryMove(this._activeSnake, LEFT);
+      this._state = this._drawer.tryMove(this._activeSnake, LEFT); check = true;
     } else if (key === 'd' || key === 'arrowright') {
-      this._state = this._drawer.tryMove(this._activeSnake, RIGHT);
+      this._state = this._drawer.tryMove(this._activeSnake, RIGHT); check = true;
     } else if (key === 'w' || key === 'arrowup') {
-      this._state = this._drawer.tryMove(this._activeSnake, UP);
+      this._state = this._drawer.tryMove(this._activeSnake, UP); check = true;
     } else if (key === 's' || key === 'arrowdown') {
-      this._state = this._drawer.tryMove(this._activeSnake, DOWN);
+      this._state = this._drawer.tryMove(this._activeSnake, DOWN); check = true;
     } else if (key === 'z' && event.ctrlKey) {
       event.preventDefault();
       this.undo();
@@ -274,7 +277,7 @@ class GameBoard {
       event.preventDefault();
       this.restart();
     }
-    if (oldState !== this._state.toString()) {
+    if (check && oldState !== this._state.toString()) {
       while (this._stateStackIdx != this._stateStack.length - 1) this._stateStack.pop();
       this._stateStackIdx++;
       this._stateStack.push( this._state.toString() );

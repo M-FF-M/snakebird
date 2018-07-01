@@ -327,7 +327,7 @@ class GameDrawer {
           state.getVal(sx - 1, sy + 1, this._fallThrough ? WRAP_AROUND : EMPTY)];
         // 0 left, 1 right, 2 top, 3 bottom, 4 top left, 5 top right, 6 bottom right, 7 bottom left
         if (val == OBSTACLE) {
-          drawObstacle(con, bx, by, adjVals, bSize, sx, sy, globalTime);
+          drawObstacle(con, bx, by, adjVals, bSize, sx, sy);
         } else if (val == SPIKE) {
           drawSpike(con, bx, by, adjVals, bSize);
         } else if (val == FRUIT) {
@@ -348,6 +348,25 @@ class GameDrawer {
           con.arc(bx, by, bSize / 2.5, 0, 2 * Math.PI);
           con.closePath();
           con.fill();
+        }
+      }
+    }
+    // draw grass on top
+    for (let sx=0; sx<state.width; sx++) {
+      for (let sy=0; sy<state.height; sy++) {
+        const [bx, by] = bCoord(sx, sy);
+        const val = state.getVal(sx, sy);
+        const adjVals = [state.getVal(sx - 1, sy, this._fallThrough ? WRAP_AROUND : EMPTY),
+          state.getVal(sx + 1, sy, this._fallThrough ? WRAP_AROUND : EMPTY),
+          state.getVal(sx, sy - 1, this._fallThrough ? WRAP_AROUND : EMPTY),
+          state.getVal(sx, sy + 1, this._fallThrough ? WRAP_AROUND : EMPTY),
+          state.getVal(sx - 1, sy - 1, this._fallThrough ? WRAP_AROUND : EMPTY),
+          state.getVal(sx + 1, sy - 1, this._fallThrough ? WRAP_AROUND : EMPTY),
+          state.getVal(sx + 1, sy + 1, this._fallThrough ? WRAP_AROUND : EMPTY),
+          state.getVal(sx - 1, sy + 1, this._fallThrough ? WRAP_AROUND : EMPTY)];
+        // 0 left, 1 right, 2 top, 3 bottom, 4 top left, 5 top right, 6 bottom right, 7 bottom left
+        if (val == OBSTACLE) {
+          drawGrass(con, bx, by, adjVals, bSize, sx, sy, globalTime);
         }
       }
     }

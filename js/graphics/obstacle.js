@@ -9,12 +9,8 @@
  * @param {number} bSize the width and height of the grid cell
  * @param {number} sx the x coordinate of the grid cell in the game state array
  * @param {number} sy the y coordinate of the grid cell in the game state array
- * @param {number} globalTime a number between 0 and 1 that is used for cyclic animations
  */
-function drawObstacle(con, bx, by, adjVals, bSize, sx, sy, globalTime) {
-  const osc = Math.sin(globalTime * 2 * Math.PI);
-
-  const [ssx, ssy] = [(sx + 900) % 3, (sy + 900) % 3];
+function drawObstacle(con, bx, by, adjVals, bSize, sx, sy) {
   const [ssbx, ssby] = [(sx + 900) % 5, (sy + 900) % 5];
 
   // block
@@ -160,6 +156,25 @@ function drawObstacle(con, bx, by, adjVals, bSize, sx, sy, globalTime) {
     con.closePath();
     con.fill();
   }
+}
+
+/**
+ * Draws the grass on top of the obstacle on the given canvas
+ * @param {CanvasRenderingContext2D} con the context of the canvas the grass should be drawn on
+ * @param {number} bx the x coordinate of the center of the grid cell
+ * @param {number} by the y coordinate of the center of the grid cell
+ * @param {number[]} adjVals an array containing the values in the adjacent grid cells
+ * (0: left, 1: right, 2: top, 3: bottom, 4: top left, 5: top right, 6: bottom right, 7: bottom left)
+ * @param {number} bSize the width and height of the grid cell
+ * @param {number} sx the x coordinate of the grid cell in the game state array
+ * @param {number} sy the y coordinate of the grid cell in the game state array
+ * @param {number} globalTime a number between 0 and 1 that is used for cyclic animations
+ */
+function drawGrass(con, bx, by, adjVals, bSize, sx, sy, globalTime) {
+  const osc = Math.sin(globalTime * 2 * Math.PI);
+
+  const [ssx, ssy] = [(sx + 900) % 3, (sy + 900) % 3];
+  const [ssbx, ssby] = [(sx + 900) % 5, (sy + 900) % 5];
 
   if (adjVals[2] != OBSTACLE) {
     // grass
