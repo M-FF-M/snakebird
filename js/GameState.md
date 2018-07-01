@@ -9,14 +9,14 @@ coordinates of the two portals (again, separated by spaces).
 
 ## Character table
 
-| Character          | Meaning               | Character          | Meaning               |
-| ------------------ | --------------------- | ------------------ | --------------------- |
-| `X`                | target                | `$`                | target, game was won  |
-| `?`                | target, game was lost | `@`                | fruit                 |
-| `#`                | obstacle              | `|`                | spike                 |
-| `*`                | portal                | `.`                | empty                 |
-| `A` - `U`          | snake head            | `<`, `>`, `v`, `^` | snake body part       |
-| `a` - `u`          | movable block         |                    |                       |
+| Character           | Meaning               | Character           | Meaning               |
+| ------------------- | --------------------- | ------------------- | --------------------- |
+| `X`                 | target                | `$`                 | target, game was won  |
+| `?`                 | target, game was lost | `@`                 | fruit                 |
+| `#`                 | obstacle              | <code>&#124;</code> | spike                 |
+| `*`                 | portal                | `.`                 | empty                 |
+| `A` - `U`           | snake head            | `<`, `>`, `v`, `^`  | snake body part       |
+| `a` - `u`           | movable block         |                     |                       |
 
 ## Examples
 
