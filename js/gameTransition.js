@@ -173,6 +173,12 @@ function gameTransition(gameState, snake, direction, fallThrough = false, gravit
     const moveSnake = (cs, nx, ny, snIdx, newSnIdx, ate, removeLast = true) => {
       retArr[retArr.length - 1][snIdx][0] += direction[0]; // update retArr: set new snake head position
       retArr[retArr.length - 1][snIdx][1] += direction[1];
+      if (fallThrough) { // wrap position if necessary
+        while (retArr[retArr.length - 1][snIdx][0] < 0) retArr[retArr.length - 1][snIdx][0] += gameState.width;
+        while (retArr[retArr.length - 1][snIdx][1] < 0) retArr[retArr.length - 1][snIdx][1] += gameState.height;
+        retArr[retArr.length - 1][snIdx][0] %= gameState.width;
+        retArr[retArr.length - 1][snIdx][1] %= gameState.height;
+      }
       if (!ate) {
         const lastpos = cs.popBack(); // the snake didn't eat a fruit --> remove last body part
         if (removeLast) {
@@ -198,7 +204,7 @@ function gameTransition(gameState, snake, direction, fallThrough = false, gravit
     const snIdx = (typeof snake === 'number') ? snake : gameState.snakeMap.get(snake);
     let nSnIdx = snIdx;
     const cs = gameState.snakes[snIdx]; const [x, y] = cs.getFront(); // coordinates of the head
-    const [nx, ny] = [x + direction[0], y + direction[1]]; // new coordinates of the head
+    let [nx, ny] = [x + direction[0], y + direction[1]]; // new coordinates of the head
     if (fallThrough) { // wrap new position
       nx += gameState.width; nx %= gameState.width;
       ny += gameState.height; ny %= gameState.height;

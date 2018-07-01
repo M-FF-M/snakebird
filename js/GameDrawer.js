@@ -14,6 +14,16 @@ const COLOR_MAP = {
 const STEP_LENGTH = 150;
 
 /**
+ * Change the opacity of a color
+ * @param {string} color the color (format: rgba(255, 255, 255, 1))
+ * @param {number|string} opacity the new opacity (a value between 0 and 1)
+ * @return {string} the same color with the new opacity
+ */
+function transparentize(color, opacity) {
+  return color.replace(/, \d+(\.\d+)?\)/, `, ${opacity})`);
+}
+
+/**
  * Draws a game state
  */
 class GameDrawer {
@@ -25,8 +35,10 @@ class GameDrawer {
    * @param {number} width the width of the (visible) game board
    * @param {number} height the height of the (visible) game board
    * @param {GameState} gameState the game state
+   * @param {boolean} [fallThrough] whether the objects that fall out of the board appear again
+   * on the other side of the board
    */
-  constructor(canvas, x, y, width, height, gameState) {
+  constructor(canvas, x, y, width, height, gameState, fallThrough = false) {
     this.draw = this.draw.bind(this);
     this.click = this.click.bind(this);
     this._canvas = canvas;
@@ -49,13 +61,14 @@ class GameDrawer {
     const stClone = this._state.clone();
     this._snakeQueues = stClone.snakes;
     this._blockQueues = stClone.blocks;
+    this._fallThrough = fallThrough;
     this._clickListeners = [];
     this._canvas.addEventListener('click', this.click);
   }
 
-  tryMove(snake, direction) {
+  tryMove(snake, direction, gravity = DOWN) {
     if (!this._animationRunning) {
-      const moveRes = gameTransition(this._state, snake, direction);
+      const moveRes = gameTransition(this._state, snake, direction, this._fallThrough, gravity);
       if (moveRes !== null) {
         this._aniSnakeMoveInd = this._state.snakeMap.get(snake);
         this._aniAteFruit = moveRes[0];
@@ -127,11 +140,13 @@ class GameDrawer {
     return [w, h, ax, ay, bSize, bCoord];
   }
 
-  draw() {
+  draw(isAniFrame = false) {
     const [con, x, y, width, height, bWidth, bHeight] = [this._context, this._x, this._y, this._width,
       this._height, this._boardWidth, this._boardHeight];
     let state = this._state;
     const [w, h, ax, ay, bSize, bCoord] = this.getDimVars();
+
+    const globalTime = ((new Date()).getTime() % 3000) / 3000;
 
     const snakeOffsets = []; for (let i=0; i<state.snakes.length; i++) snakeOffsets.push([0, 0]);
     const blockOffsets = []; for (let i=0; i<state.blocks.length; i++) blockOffsets.push([0, 0]);
@@ -152,7 +167,10 @@ class GameDrawer {
           const isSnake = i < snakeOffsets.length; const ib = isSnake ? i : i - snakeOffsets.length;
           const initialPos = isSnake ? snakes[ib].getFront() : blocks[ib].getFront();
           const lastPos = this._aniArray[cStep][i];
-          const nextPos = this._aniArray[cStep + 1][i];
+          let nextPos = this._aniArray[cStep + 1][i];
+          if (this._fallThrough && lastPos.length != 6 && lastPos.length != 7) {
+            nextPos = this._checkPosChange(lastPos, nextPos);
+          }
           const cPos = [(1 - cStepT) * lastPos[0] + cStepT * nextPos[0],
             (1 - cStepT) * lastPos[1] + cStepT * nextPos[1]];
           if (isSnake) snakeOffsets[ib] = [cPos[0] - initialPos[0], cPos[1] - initialPos[1]];
@@ -163,10 +181,8 @@ class GameDrawer {
 
     const [snakes, blocks] = [this._snakeQueues, this._blockQueues];
 
-    con.fillStyle = 'rgba(0, 51, 102, 1)';
-    con.fillRect(x, y, width, height);
     con.clearRect(ax, ay, w, h);
-    this.drawBoard(state, con, bSize, bCoord);
+
     for (let i=0; i<snakes.length; i++) {
       if (this._animationRunning && i == this._aniSnakeMoveInd)
         this.drawSnake(state, con, bSize, bCoord, snakes[i], COLOR_MAP[state.snakeToCharacter[i]],
@@ -180,22 +196,42 @@ class GameDrawer {
         COLOR_MAP[state.blockToCharacter[i].toUpperCase()], blockOffsets[i]);
     }
 
-    if (this._animationRunning) {
-      window.requestAnimationFrame(this.draw);
+    this.drawBoard(state, con, bSize, bCoord, globalTime);
+
+    con.globalCompositeOperation = 'destination-in';
+    con.fillStyle = 'rgba(255, 255, 255, 1)';
+    con.fillRect(ax, ay, w, h);
+    con.globalCompositeOperation = 'source-over';
+
+    /* con.fillStyle = 'rgba(0, 51, 102, 1)';
+    con.fillRect(x, y, ax - x, height);
+    con.fillRect(x, y, width, ay - y);
+    con.fillRect(ax + w, y, width - ax - w, height);
+    con.fillRect(x, ay + h, width, height - ay - h); */
+
+    if (isAniFrame) {
+      window.requestAnimationFrame(() => this.draw(true));
     }
   }
 
-  drawBoard(state, con, bSize, bCoord) {
+  drawBoard(state, con, bSize, bCoord, globalTime) {
     for (let sx=0; sx<state.width; sx++) {
       for (let sy=0; sy<state.height; sy++) {
         const [bx, by] = bCoord(sx, sy);
         const val = state.getVal(sx, sy);
+        const adjVals = [state.getVal(sx - 1, sy, this._fallThrough ? WRAP_AROUND : EMPTY),
+          state.getVal(sx + 1, sy, this._fallThrough ? WRAP_AROUND : EMPTY),
+          state.getVal(sx, sy - 1, this._fallThrough ? WRAP_AROUND : EMPTY),
+          state.getVal(sx, sy + 1, this._fallThrough ? WRAP_AROUND : EMPTY),
+          state.getVal(sx - 1, sy - 1, this._fallThrough ? WRAP_AROUND : EMPTY),
+          state.getVal(sx + 1, sy - 1, this._fallThrough ? WRAP_AROUND : EMPTY),
+          state.getVal(sx + 1, sy + 1, this._fallThrough ? WRAP_AROUND : EMPTY),
+          state.getVal(sx - 1, sy + 1, this._fallThrough ? WRAP_AROUND : EMPTY)];
+        // 0 left, 1 right, 2 top, 3 bottom, 4 top left, 5 top right, 6 bottom right, 7 bottom left
         if (val == OBSTACLE) {
-          con.fillStyle = 'rgba(204, 102, 0, 1)';
-          con.fillRect(bx - bSize / 2, by - bSize / 2, bSize, bSize);
+          drawObstacle(con, bx, by, adjVals, bSize, sx, sy, globalTime);
         } else if (val == SPIKE) {
-          con.fillStyle = 'rgba(153, 153, 102, 1)';
-          con.fillRect(bx - bSize / 2, by - bSize / 2, bSize, bSize);
+          drawSpike(con, bx, by, adjVals, bSize);
         } else if (val == FRUIT) {
           con.fillStyle = 'rgba(255, 0, 0, 1)';
           con.beginPath();
@@ -228,19 +264,25 @@ class GameDrawer {
       let off = offset;
       if (i != 0 && mvSnProg >= 0 && mvSnProg <= 1) {
         if (i == len - 1 && !this._aniAteFruit) {
-          const [nx, ny] = partQ.get(i-1);
+          let [nx, ny] = partQ.get(i-1);
+          if (this._fallThrough) {
+            [nx, ny] = this._checkPosChange([x, y], [nx, ny]);
+          }
           off = [(nx - x) * mvSnProg, (ny - y) * mvSnProg];
         } else off = [0, 0];
       }
-      const [bx, by] = bCoord(x + off[0], y + off[1]);
-      con.fillRect(bx - bSize / 2, by - bSize / 2, bSize, bSize);
-      if (i == 0) {
-        con.fillStyle = 'rgba(255, 255, 255, 1)';
-        con.beginPath();
-        con.arc(bx, by, bSize / 3, 0, 2 * Math.PI);
-        con.closePath();
-        con.fill();
-        con.fillStyle = color;
+      const [ox, oy, drawAt] = this._getAllOffsets(state, x, y, off);
+      for (let k=0; k<drawAt.length; k++) {
+        const [bx, by] = bCoord(ox + drawAt[k][0], oy + drawAt[k][1]);
+        con.fillRect(bx - bSize / 2, by - bSize / 2, bSize, bSize);
+        if (i == 0) {
+          con.fillStyle = 'rgba(255, 255, 255, 1)';
+          con.beginPath();
+          con.arc(bx, by, bSize / 3, 0, 2 * Math.PI);
+          con.closePath();
+          con.fill();
+          con.fillStyle = color;
+        }
       }
     }
   }
@@ -249,8 +291,39 @@ class GameDrawer {
     con.fillStyle = color;
     for (let i=0; i<partQ.length; i++) {
       const [x, y] = partQ.get(i);
-      const [bx, by] = bCoord(x + offset[0], y + offset[1]);
-      con.fillRect(bx - bSize / 2, by - bSize / 2, bSize, bSize);
+      const [ox, oy, drawAt] = this._getAllOffsets(state, x, y, offset);
+      for (let k=0; k<drawAt.length; k++) {
+        const [bx, by] = bCoord(ox + drawAt[k][0], oy + drawAt[k][1]);
+        con.fillRect(bx - bSize / 2, by - bSize / 2, bSize, bSize);
+      }
     }
+  }
+
+  _getAllOffsets(state, x, y, off) {
+    let [ox, oy] = [x + off[0], y + off[1]];
+    const drawAt = [[0, 0]]; // if the part is at the border of the board, draw it on the other side of
+    // the board as well (in case of this._fallThrough) -- this array contains additional offsets to add
+    if (this._fallThrough) {
+      while (ox < 0) ox += state.width; while (oy < 0) oy += state.height;
+      ox %= state.width; oy %= state.height;
+      if (state.width - ox < 1) drawAt.push([-state.width, 0]);
+      if (state.height - oy < 1) drawAt.push([0, -state.height]);
+      if (state.width - ox < 1 && state.height - oy < 1) drawAt.push([-state.width, -state.height]);
+    }
+    return [ox, oy, drawAt];
+  }
+
+  _checkPosChange(lastPos, nextPos) {
+    if (Math.abs(nextPos[0] - lastPos[0]) > 1) {
+      nextPos = nextPos.slice();
+      if (nextPos[0] - lastPos[0] > 0) nextPos[0] = lastPos[0] - 1;
+      else nextPos[0] = lastPos[0] + 1;
+    }
+    if (Math.abs(nextPos[1] - lastPos[1]) > 1) {
+      nextPos = nextPos.slice();
+      if (nextPos[1] - lastPos[1] > 0) nextPos[1] = lastPos[1] - 1;
+      else nextPos[1] = lastPos[1] + 1;
+    }
+    return nextPos;
   }
 }
