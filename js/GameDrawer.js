@@ -53,10 +53,11 @@ class GameDrawer {
    * @param {number} width the width of the (visible) game board
    * @param {number} height the height of the (visible) game board
    * @param {GameState} gameState the game state
+   * @param {GameBoard} gameBoard the game board
    * @param {boolean} [fallThrough] whether the objects that fall out of the board appear again
    * on the other side of the board
    */
-  constructor(canvas, x, y, width, height, gameState, fallThrough = false) {
+  constructor(canvas, x, y, width, height, gameState, gameBoard, fallThrough = false) {
     this.draw = this.draw.bind(this);
     this.click = this.click.bind(this);
     this._canvas = canvas;
@@ -66,6 +67,7 @@ class GameDrawer {
     this._width = width;
     this._height = height;
     this._state = gameState;
+    this._gameBoard = gameBoard;
     this._newState = null;
     this._aniArray = null;
     this._aniEnd = 0; // 1: animate game won, -2: animate game lost, -1: animate game lost (endless loop)
@@ -284,6 +286,8 @@ class GameDrawer {
     con.fillStyle = 'rgba(255, 255, 255, 1)';
     con.fillRect(ax, ay, w, h);
     con.globalCompositeOperation = 'source-over';
+
+    this._gameBoard.drawBackground();
 
     /* con.fillStyle = 'rgba(0, 51, 102, 1)';
     con.fillRect(x, y, ax - x, height);

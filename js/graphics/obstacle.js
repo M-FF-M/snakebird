@@ -322,7 +322,7 @@ function drawGrass(con, bx, by, adjVals, bSize, sx, sy, globalTime) {
     let flower = -1; // 0 or 1
     let fcolor = 'rgba(1, 194, 247, 1)';
     if ((ssbx == 1) && (ssby == 0)) {
-      flower = 0; fcolor = 'rgba(255, 77, 166, 1)';
+      flower = 0; fcolor = 'rgba(255, 104, 249, 1)';
     } else if ((ssbx == 0) && (ssby == 2)) {
       flower = 1;
     } else if ((ssbx == 2) && (ssby == 1)) {
@@ -330,7 +330,7 @@ function drawGrass(con, bx, by, adjVals, bSize, sx, sy, globalTime) {
     } else if ((ssbx == 4) && (ssby == 3)) {
       flower = 0;
     } else if ((ssbx == 2) && (ssby == 4)) {
-      flower = 1; fcolor = 'rgba(255, 77, 166, 1)';
+      flower = 1; fcolor = 'rgba(255, 104, 249, 1)';
     }
     if (flower != -1) {
       if (flower == 0) {

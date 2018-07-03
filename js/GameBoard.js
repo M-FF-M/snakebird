@@ -9,7 +9,7 @@ const INFO_LINE_HEIGHT = 40;
  * The minimum size of the game board
  * @type {number[]}
  */
-const MIN_SIZE = [700, 400];
+const MIN_SIZE = [300, 200];
 
 /**
  * Represents a snake bird game board
@@ -48,6 +48,21 @@ class GameBoard {
     this._fallThrough = fallThrough;
     this._state = gameState;
     this._parent = parentElem;
+    this._clouds = [];
+    this._cloudPositions = [];
+    this._actualClouds = [];
+    for (let i=0; i<12; i++) {
+      this._clouds.push(generateCloud(0.7 + Math.random() * 0.6, 12 + Math.floor(Math.random() * 7)));
+      let randPosX = 0, randPosY = 0;
+      if (i < 6) {
+        randPosX = (i + 0.5) / 6 + (Math.random() * 0.125 - 0.01625);
+        randPosY = 0.2 + Math.random() * 0.4;
+      } else {
+        randPosX = (i - 5.5) / 6 + (Math.random() * 0.125 - 0.01625);
+        randPosY = 0.1 + Math.random() * 0.3;
+      }
+      this._cloudPositions.push([randPosX, randPosY]);
+    }
     this._canvasArr = [];
     this._width = Math.max(window.innerWidth, MIN_SIZE[0]);
     this._height = Math.max(window.innerHeight, MIN_SIZE[1]);
@@ -64,7 +79,7 @@ class GameBoard {
       this._parent.appendChild(this._canvasArr[i]);
     }
     this._drawer = new GameDrawer(this._canvasArr[1], 0, INFO_LINE_HEIGHT, this._width,
-      this._height - INFO_LINE_HEIGHT, this._state, this._fallThrough);
+      this._height - INFO_LINE_HEIGHT, this._state, this, this._fallThrough);
     this._drawer.draw(true);
     this._activeSnake = this._state.snakeToCharacter[0];
     this._drawer.addEventListener('click', this.click);
@@ -95,12 +110,22 @@ class GameBoard {
     con.fillStyle = 'rgba(255, 255, 255, 1)';
     con.textAlign = 'center';
     con.textBaseline = 'middle';
-    con.fillText(`${this.moveCounter} move${(this.moveCounter == 1 ? '' : 's')}`
-      + ` / ${this.extraMoveCounter} move${(this.extraMoveCounter == 1 ? '' : 's')} undone`, cx, cy);
+    let moveTxt = `${this.moveCounter} move${(this.moveCounter == 1 ? '' : 's')}`;
+    let buttonDist = 5.5;
+    if (this._width >= INFO_LINE_HEIGHT * 15) {
+      moveTxt += ` / ${this.extraMoveCounter} move${(this.extraMoveCounter == 1 ? '' : 's')} undone`;
+      if (this._width > INFO_LINE_HEIGHT * 18)
+        buttonDist = 7;
+    } else {
+      if (this._width < INFO_LINE_HEIGHT * 10) buttonDist = 2.5;
+      else buttonDist = 3;
+    }
+    borderedText(con, moveTxt, cx, cy, 'rgba(255, 255, 255, 1)', 'rgba(55, 117, 161, 1)',
+      INFO_LINE_HEIGHT / 20);
     if (this._stateStackIdx > 0) { // draw undo button
       let bcolor = 'rgba(78, 141, 188, 1)';
       if (this._undoHover) bcolor = 'rgba(78, 168, 188, 1)';
-      this._undoButtonPos = drawButton(con, cx - INFO_LINE_HEIGHT * 7, cy, INFO_LINE_HEIGHT * 0.8,
+      this._undoButtonPos = drawButton(con, cx - INFO_LINE_HEIGHT * buttonDist, cy, INFO_LINE_HEIGHT * 0.8,
         bcolor, 'rgba(55, 117, 161, 1)', '< Undo');
     } else {
       this._undoButtonPos = []; this._undoHover = false;
@@ -108,7 +133,7 @@ class GameBoard {
     if (this._stateStackIdx < this._stateStack.length - 1) { // draw redo button
       let bcolor = 'rgba(78, 141, 188, 1)';
       if (this._redoHover) bcolor = 'rgba(78, 168, 188, 1)';
-      this._redoButtonPos = drawButton(con, cx + INFO_LINE_HEIGHT * 7, cy, INFO_LINE_HEIGHT * 0.8,
+      this._redoButtonPos = drawButton(con, cx + INFO_LINE_HEIGHT * buttonDist, cy, INFO_LINE_HEIGHT * 0.8,
         bcolor, 'rgba(55, 117, 161, 1)', 'Redo >');
     } else {
       this._redoButtonPos = []; this._redoHover = false;
@@ -162,10 +187,20 @@ class GameBoard {
     if (oUH != this._undoHover || oRH != this._redoHover) this.drawInfoLine();
   }
 
+  _recalcClouds() {
+    const sz = Math.max(this._width, this._height);
+    for (let i=0; i<this._clouds.length; i++) {
+      this._actualClouds.push(moveCloudArr(scaleCloudArr(this._clouds[i], sz / 5),
+        0, this._cloudPositions[i][1] * this._height));
+    }
+  }
+
   /**
    * Draw the background
    */
   drawBackground() {
+    const cloud_sz = 1.3 * Math.max(this._width, this._height) / 10;
+    if (this._actualClouds.length == 0) this._recalcClouds();
     const con = this._canvasArr[0].getContext('2d');
     con.clearRect(0, 0, this._width, this._height);
     let bgGrad = con.createLinearGradient(0, 0, 0, this._height);
@@ -173,6 +208,20 @@ class GameBoard {
     bgGrad.addColorStop(1, 'rgba(149, 217, 247, 1)');
     con.fillStyle = bgGrad;
     con.fillRect(0, 0, this._width, this._height);
+
+    const aMove = ( ((new Date()).getTime() % 50000) / 50000 ) * (this._width + 2 * cloud_sz);
+    const bMove = ( ((new Date()).getTime() % 80000) / 80000 ) * (this._width + 2 * cloud_sz);
+
+    for (let i=0; i<this._actualClouds.length; i++) {
+      let xp = this._cloudPositions[i][0] * (this._width + 2 * cloud_sz);
+      if (i < 6) con.fillStyle = 'rgba(211, 239, 250, 1)';
+      else con.fillStyle = 'rgba(255, 255, 255, 1)';
+      if (i < 6) xp += bMove;
+      else xp += aMove;
+      xp %= this._width + 2 * cloud_sz; xp -= cloud_sz;
+      drawCloudPath(con, this._actualClouds[i], xp);
+      con.fill();
+    }
   }
 
   /**
@@ -180,7 +229,6 @@ class GameBoard {
    */
   restart() {
     this._stateStackIdx = 0;
-    while (this._stateStack.length > 1) this._stateStack.pop();
     this._state = new GameState(this._stateStack[this._stateStackIdx]);
     this._drawer.setState(this._state);
     this.extraMoveCounter += this.moveCounter;
@@ -228,6 +276,7 @@ class GameBoard {
    * This method will adapt the game board size to the window size
    */
   resize() {
+    this._actualClouds = [];
     this._width = Math.max(window.innerWidth, MIN_SIZE[0]);
     this._height = Math.max(window.innerHeight, MIN_SIZE[1]);
     for (let i=0; i<3; i++) {

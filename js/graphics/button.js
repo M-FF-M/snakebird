@@ -47,11 +47,7 @@ function drawButton(con, x, y, height, color, shadowColor, text, textColor = 'rg
   con.closePath();
   con.fill();
 
-  con.fillStyle = shadowColor; // text shadow
-  con.fillText(text, x, y + height / 16 + textShadowOffset);
-
-  con.fillStyle = textColor; // main text
-  con.fillText(text, x, y + height / 16);
+  textWithShadow(con, text, x, y + height / 16, textColor, shadowColor, textShadowOffset);
 
   return [x - width / 2, y - height / 2, width, height];
 }
