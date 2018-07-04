@@ -1,11 +1,5 @@
 
 /**
- * The squareroot of 2
- * @type {number}
- */
-const SQRT_2 = Math.sqrt(2);
-
-/**
  * The basic function for calculating the top coordinates of the cloud
  * @param {number} x the x coordinate to calulate the y coordinate for (between -1 and 1)
  */

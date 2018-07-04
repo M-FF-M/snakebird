@@ -3,7 +3,7 @@
  * Whether to turn off cyclic animations for development purposes
  * @type {boolean}
  */
-const TURN_OFF_CYCLIC_ANIMATIONS = true;
+const TURN_OFF_CYCLIC_ANIMATIONS = false;
 
 /**
  * Specifies the margin around the game board (in pixels)
@@ -32,16 +32,6 @@ const COLOR_MAP = {
 const STEP_LENGTH = 150;
 
 /**
- * Change the opacity of a color
- * @param {string} color the color (format: rgba(255, 255, 255, 1))
- * @param {number|string} opacity the new opacity (a value between 0 and 1)
- * @return {string} the same color with the new opacity
- */
-function transparentize(color, opacity) {
-  return color.replace(/, \d+(\.\d+)?\)/, `, ${opacity})`);
-}
-
-/**
  * Draws a game state
  */
 class GameDrawer {
@@ -56,8 +46,11 @@ class GameDrawer {
    * @param {GameBoard} gameBoard the game board
    * @param {boolean} [fallThrough] whether the objects that fall out of the board appear again
    * on the other side of the board
+   * @param {boolean} [noCyclicAni] whether or not to animate grass, clouds etc.
+   * @param {boolean} [noAni] whether or not to animate falling snakes
    */
-  constructor(canvas, x, y, width, height, gameState, gameBoard, fallThrough = false) {
+  constructor(canvas, x, y, width, height, gameState, gameBoard, fallThrough = false,
+      noCyclicAni = false, noAni = false) {
     this.draw = this.draw.bind(this);
     this.click = this.click.bind(this);
     this._canvas = canvas;
@@ -78,6 +71,8 @@ class GameDrawer {
     this._boardWidth = this._state.width;
     this._boardHeight = this._state.height;
     this._animationRunning = false;
+    this._noCyclicAni = noCyclicAni;
+    this._noAni = noAni;
     const stClone = this._state.clone();
     this._snakeQueues = stClone.snakes;
     this._blockQueues = stClone.blocks;
@@ -96,7 +91,7 @@ class GameDrawer {
    * @return {GameState} the new game state (or the old one if the move was invalid)
    */
   tryMove(snake, direction, gravity = DOWN) {
-    if (!this._animationRunning && this._state.snakeMap.has(snake)) {
+    if (!this._animationRunning && this._state.snakeMap.has(snake) && !this._state.gameEnded) {
       const moveRes = gameTransition(this._state, snake, direction, this._fallThrough, gravity);
       if (moveRes !== null) {
         this._aniSnakeMoveInd = this._state.snakeMap.get(snake);
@@ -123,15 +118,14 @@ class GameDrawer {
    * @param {GameState} state the new game state
    */
   setState(state) {
-    if (!this._animationRunning) {
-      this._state = state;
-      this._boardWidth = this._state.width;
-      this._boardHeight = this._state.height;
-      const stClone = this._state.clone();
-      this._snakeQueues = stClone.snakes;
-      this._blockQueues = stClone.blocks;
-      this.draw();
-    }
+    this._animationRunning = false;
+    this._state = state;
+    this._boardWidth = this._state.width;
+    this._boardHeight = this._state.height;
+    const stClone = this._state.clone();
+    this._snakeQueues = stClone.snakes;
+    this._blockQueues = stClone.blocks;
+    this.draw();
   }
 
   /**
@@ -230,14 +224,16 @@ class GameDrawer {
     let state = this._state;
     const [w, h, ax, ay, bSize, bCoord] = this.getDimVars();
 
-    const globalTime = ((new Date()).getTime() % 3000) / 3000;
+    let globalTime = ((new Date()).getTime() % 3000) / 3000;
+    let globalSlowTime = ((new Date()).getTime() % 10000) / 10000;
+    if (this._noCyclicAni) globalTime = globalSlowTime = 0;
 
     const snakeOffsets = []; for (let i=0; i<state.snakes.length; i++) snakeOffsets.push([0, 0]);
     const blockOffsets = []; for (let i=0; i<state.blocks.length; i++) blockOffsets.push([0, 0]);
     let cStep, cStepT;
     if (this._animationRunning) {
       const timePassed = (new Date()).getTime() - this._aniStartTime;
-      if (timePassed >= STEP_LENGTH * this._aniLength) {
+      if (timePassed >= STEP_LENGTH * this._aniLength || this._noAni) {
         this._animationRunning = false;
         this._state = this._newState; state = this._state;
         const stClone = this._state.clone();
@@ -267,6 +263,12 @@ class GameDrawer {
 
     con.clearRect(ax, ay, w, h);
 
+    let fruitProg = this._state.fruits;
+    if (this._animationRunning && this._aniAteFruit && cStep == 0) {
+      fruitProg -= cStepT;
+    }
+    this.drawBoardBack(state, con, bSize, bCoord, globalTime, globalSlowTime, fruitProg);
+
     for (let i=0; i<snakes.length; i++) {
       if (this._animationRunning && i == this._aniSnakeMoveInd)
         this.drawSnake(state, con, bSize, bCoord, snakes[i], COLOR_MAP[state.snakeToCharacter[i]],
@@ -280,14 +282,14 @@ class GameDrawer {
         COLOR_MAP[state.blockToCharacter[i].toUpperCase()], blockOffsets[i]);
     }
 
-    this.drawBoard(state, con, bSize, bCoord, globalTime);
+    this.drawBoardFront(state, con, bSize, bCoord, globalTime, globalSlowTime);
 
     con.globalCompositeOperation = 'destination-in';
     con.fillStyle = 'rgba(255, 255, 255, 1)';
     con.fillRect(ax, ay, w, h);
     con.globalCompositeOperation = 'source-over';
 
-    this._gameBoard.drawBackground();
+    this._gameBoard.drawBackground(!this._noCyclicAni);
 
     /* con.fillStyle = 'rgba(0, 51, 102, 1)';
     con.fillRect(x, y, ax - x, height);
@@ -296,7 +298,7 @@ class GameDrawer {
     con.fillRect(x, ay + h, width, height - ay - h); */
 
     if (!TURN_OFF_CYCLIC_ANIMATIONS) {
-      if (isAniFrame) {
+      if (isAniFrame && !this._noCyclicAni) {
         window.requestAnimationFrame(() => this.draw(true));
       }
     } else {
@@ -307,16 +309,18 @@ class GameDrawer {
   }
 
   /**
-   * Draw the board without moving objects (such as snakes or blocks)
+   * Draw the part of the board without moving objects (such as snakes or blocks) that is in front
+   * of the moving objects
    * @param {GameState} state the (old) game state
    * @param {CanvasRenderingContext2D} con the context of the canvas
    * @param {number} bSize the size of a single grid cell
    * @param {Function} bCoord a function that takes the x and y coordinates of a grid cell in the game
    * state array as parameters and returns an array with the corresponding x and y coordinates of the
    * center of the grid cell on the canvas
-   * @param {number} globalTime a number between 0 and 1 that is used for cyclic animations
+   * @param {number} globalTime a number between 0 and 1 that is used for cyclic animations (3s cycle)
+   * @param {number} globalSlowTime a number between 0 and 1 that is used for cyclic animations (10s cycle)
    */
-  drawBoard(state, con, bSize, bCoord, globalTime) {
+  drawBoardFront(state, con, bSize, bCoord, globalTime, globalSlowTime) {
     for (let sx=0; sx<state.width; sx++) {
       for (let sy=0; sy<state.height; sy++) {
         const [bx, by] = bCoord(sx, sy);
@@ -335,25 +339,17 @@ class GameDrawer {
         } else if (val == SPIKE) {
           drawSpike(con, bx, by, adjVals, bSize);
         } else if (val == FRUIT) {
-          con.fillStyle = 'rgba(255, 0, 0, 1)';
-          con.beginPath();
-          con.arc(bx, by, bSize / 2.5, 0, 2 * Math.PI);
-          con.closePath();
-          con.fill();
-        } else if (val == PORTAL) {
-          con.fillStyle = 'rgba(0, 153, 255, 1)';
-          con.beginPath();
-          con.arc(bx, by, bSize / 2.5, 0, 2 * Math.PI);
-          con.closePath();
-          con.fill();
+          // fruit is behind moving objects
+        } else if (val == PORTAL) { // half in front, half in back
+          // portal position is taken from game state
         } else if (val == TARGET) {
-          con.fillStyle = 'rgba(102, 0, 51, 1)';
-          con.beginPath();
-          con.arc(bx, by, bSize / 2.5, 0, 2 * Math.PI);
-          con.closePath();
-          con.fill();
+          // target is behind moving objects
         }
       }
+    }
+    for (let i=0; i<this._state.portalPos.length; i++) {
+      const [px, py] = bCoord(this._state.portalPos[i][0], this._state.portalPos[i][1]);
+      drawPortalFront(con, px, py, bSize, globalSlowTime);
     }
     // draw grass on top
     for (let sx=0; sx<state.width; sx++) {
@@ -374,6 +370,58 @@ class GameDrawer {
         }
       }
     }
+  }
+
+  /**
+   * Draw the part of the board without moving objects (such as snakes or blocks) that is behind
+   * of the moving objects
+   * @param {GameState} state the (old) game state
+   * @param {CanvasRenderingContext2D} con the context of the canvas
+   * @param {number} bSize the size of a single grid cell
+   * @param {Function} bCoord a function that takes the x and y coordinates of a grid cell in the game
+   * state array as parameters and returns an array with the corresponding x and y coordinates of the
+   * center of the grid cell on the canvas
+   * @param {number} globalTime a number between 0 and 1 that is used for cyclic animations (3s cycle)
+   * @param {number} globalSlowTime a number between 0 and 1 that is used for cyclic animations (10s cycle)
+   * @param {number} fruitProg a number indicating how many fruits are present on the board
+   */
+  drawBoardBack(state, con, bSize, bCoord, globalTime, globalSlowTime, fruitProg) {
+    for (let sx=0; sx<state.width; sx++) {
+      for (let sy=0; sy<state.height; sy++) {
+        const [bx, by] = bCoord(sx, sy);
+        const val = state.getVal(sx, sy);
+        const adjVals = [state.getVal(sx - 1, sy, this._fallThrough ? WRAP_AROUND : EMPTY),
+          state.getVal(sx + 1, sy, this._fallThrough ? WRAP_AROUND : EMPTY),
+          state.getVal(sx, sy - 1, this._fallThrough ? WRAP_AROUND : EMPTY),
+          state.getVal(sx, sy + 1, this._fallThrough ? WRAP_AROUND : EMPTY),
+          state.getVal(sx - 1, sy - 1, this._fallThrough ? WRAP_AROUND : EMPTY),
+          state.getVal(sx + 1, sy - 1, this._fallThrough ? WRAP_AROUND : EMPTY),
+          state.getVal(sx + 1, sy + 1, this._fallThrough ? WRAP_AROUND : EMPTY),
+          state.getVal(sx - 1, sy + 1, this._fallThrough ? WRAP_AROUND : EMPTY)];
+        // 0 left, 1 right, 2 top, 3 bottom, 4 top left, 5 top right, 6 bottom right, 7 bottom left
+        if (val == OBSTACLE) {
+          // obstacles are in front of objects
+        } else if (val == SPIKE) {
+          // spikes are in front of objects
+        } else if (val == FRUIT) {
+          con.fillStyle = 'rgba(255, 0, 0, 1)';
+          con.beginPath();
+          con.arc(bx, by, bSize / 2.5, 0, 2 * Math.PI);
+          con.closePath();
+          con.fill();
+        } else if (val == PORTAL) { // half in front, half in back
+          // portal position is taken from game state
+        } else if (val == TARGET) {
+          // target position is taken from game state
+        }
+      }
+    }
+    for (let i=0; i<this._state.portalPos.length; i++) {
+      const [px, py] = bCoord(this._state.portalPos[i][0], this._state.portalPos[i][1]);
+      drawPortalBack(con, px, py, bSize, globalTime);
+    }
+    const [tx, ty] = bCoord(this._state.target[0], this._state.target[1]);
+    drawTarget(con, this._canvas, tx, ty, bSize, globalSlowTime, fruitProg);
   }
 
   /**

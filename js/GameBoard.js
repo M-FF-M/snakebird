@@ -22,8 +22,10 @@ class GameBoard {
    * @param {boolean} [fallThrough] if set to true, snakes and objects that fall out of the board
    * will appear again at the top (and if they leave the board through the left border, they appear
    * again at the right side of the board)
+   * @param {boolean} [noCyclicAni] whether or not to animate grass, clouds etc.
+   * @param {boolean} [noAni] whether or not to animate falling snakes
    */
-  constructor(parentElem, gameState, fallThrough = false) {
+  constructor(parentElem, gameState, fallThrough = false, noCyclicAni = false, noAni = false) {
     this.resize = this.resize.bind(this);
     this.click = this.click.bind(this);
     this.canvasClick = this.canvasClick.bind(this);
@@ -47,6 +49,8 @@ class GameBoard {
     this._stateStackIdx = 0;
     this._fallThrough = fallThrough;
     this._state = gameState;
+    this._noCyclicAni = noCyclicAni;
+    this._noAni = noAni;
     this._parent = parentElem;
     this._clouds = [];
     this._cloudPositions = [];
@@ -79,7 +83,8 @@ class GameBoard {
       this._parent.appendChild(this._canvasArr[i]);
     }
     this._drawer = new GameDrawer(this._canvasArr[1], 0, INFO_LINE_HEIGHT, this._width,
-      this._height - INFO_LINE_HEIGHT, this._state, this, this._fallThrough);
+      this._height - INFO_LINE_HEIGHT, this._state, this, this._fallThrough, this._noCyclicAni,
+      this._noAni);
     this._drawer.draw(true);
     this._activeSnake = this._state.snakeToCharacter[0];
     this._drawer.addEventListener('click', this.click);
@@ -96,7 +101,7 @@ class GameBoard {
   redraw() {
     this._drawer.draw();
     this.drawInfoLine();
-    this.drawBackground();
+    this.drawBackground(!this._noCyclicAni);
   }
 
   /**
@@ -197,8 +202,9 @@ class GameBoard {
 
   /**
    * Draw the background
+   * @param {boolean} [animate] whether or not to animate the clouds
    */
-  drawBackground() {
+  drawBackground(animate = true) {
     const cloud_sz = 1.3 * Math.max(this._width, this._height) / 10;
     if (this._actualClouds.length == 0) this._recalcClouds();
     const con = this._canvasArr[0].getContext('2d');
@@ -209,8 +215,9 @@ class GameBoard {
     con.fillStyle = bgGrad;
     con.fillRect(0, 0, this._width, this._height);
 
-    const aMove = ( ((new Date()).getTime() % 50000) / 50000 ) * (this._width + 2 * cloud_sz);
-    const bMove = ( ((new Date()).getTime() % 80000) / 80000 ) * (this._width + 2 * cloud_sz);
+    let aMove = ( ((new Date()).getTime() % 50000) / 50000 ) * (this._width + 2 * cloud_sz);
+    let bMove = ( ((new Date()).getTime() % 80000) / 80000 ) * (this._width + 2 * cloud_sz);
+    if (!animate) aMove = bMove = 0;
 
     for (let i=0; i<this._actualClouds.length; i++) {
       let xp = this._cloudPositions[i][0] * (this._width + 2 * cloud_sz);
@@ -285,7 +292,7 @@ class GameBoard {
     }
     this._drawer.resize(0, INFO_LINE_HEIGHT, this._width, this._height - INFO_LINE_HEIGHT);
     this.drawInfoLine();
-    this.drawBackground();
+    this.drawBackground(!this._noCyclicAni);
   }
 
   /**
