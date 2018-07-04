@@ -169,8 +169,9 @@ function drawObstacle(con, bx, by, adjVals, bSize, sx, sy) {
  * @param {number} sx the x coordinate of the grid cell in the game state array
  * @param {number} sy the y coordinate of the grid cell in the game state array
  * @param {number} globalTime a number between 0 and 1 that is used for cyclic animations
+ * @param {boolean} [noShrub] whether not to draw a shrub at this position
  */
-function drawGrass(con, bx, by, adjVals, bSize, sx, sy, globalTime) {
+function drawGrass(con, bx, by, adjVals, bSize, sx, sy, globalTime, noShrub = false) {
   const osc = Math.sin(globalTime * 2 * Math.PI);
 
   const [ssx, ssy] = [(sx + 900) % 3, (sy + 900) % 3];
@@ -315,6 +316,100 @@ function drawGrass(con, bx, by, adjVals, bSize, sx, sy, globalTime) {
         con.moveTo(bx + 0.7 * bSize / 3, by - 1 * bSize / 2);
         con.closePath();
         con.stroke();
+      }
+    }
+
+    // shrubs
+    con.fillStyle = 'rgba(155, 254, 80, 1)';
+    let shrub = -1; // 0 or 1 or 2
+    if (!noShrub) {
+      if ((ssbx == 2) && (ssby == 0)) {
+        shrub = 0;
+      } else if ((ssbx == 4) && (ssby == 0)) {
+        shrub = 1;
+      } else if ((ssbx == 3) && (ssby == 1)) {
+        shrub = 2;
+      } else if ((ssbx == 1) && (ssby == 2)) {
+        shrub = 1;
+      } else if ((ssbx == 0) && (ssby == 3)) {
+        shrub = 0;
+      } else if ((ssbx == 3) && (ssby == 4)) {
+        shrub = 2;
+      }
+    }
+    if (shrub != -1) {
+      if (shrub == 0) {
+        con.beginPath();
+        con.moveTo(bx - 0.8 * bSize / 2, by - bSize / 2);
+        bezierCurve(con,
+          bx - 0.8 * bSize / 2, by - bSize / 2, bx - 0.9 * bSize / 2, by - 1.4 * bSize / 2,
+          (0.1 + osc * 0.1) * Math.PI, (0.05 + osc * 0.1) * Math.PI, 1.6, 1.4);
+        bezierCurve(con,
+          bx - 0.9 * bSize / 2, by - 1.3 * bSize / 2, bx - 0.6 * bSize / 2, by - 1.8 * bSize / 2,
+          (0.05 - osc * 0.1) * Math.PI, (-0.05 + osc * 0.1) * Math.PI, 1.2, 1.3);
+        bezierCurve(con,
+          bx - 0.6 * bSize / 2, by - 1.8 * bSize / 2, bx - 0.2 * bSize / 2, by - 2 * bSize / 2,
+          (-0.05 - osc * 0.02) * Math.PI, (0.1 - osc * 0.07) * Math.PI, 1.3, 1.5);
+        bezierCurve(con,
+          bx - 0.2 * bSize / 2, by - 2 * bSize / 2, bx + 0.3 * bSize / 2, by - 1.8 * bSize / 2,
+          (0.05 + osc * 0.05) * Math.PI, (-0.05 + osc * 0.03) * Math.PI, 1.4, 1.2);
+        bezierCurve(con,
+          bx + 0.3 * bSize / 2, by - 1.8 * bSize / 2, bx + 0.5 * bSize / 2, by - 1.5 * bSize / 2,
+          (0.05 + osc * 0.05) * Math.PI, (-0.025 - osc * 0.1) * Math.PI, 1.1, 1.6);
+        bezierCurve(con,
+          bx + 0.5 * bSize / 2, by - 1.5 * bSize / 2, bx + 0.4 * bSize / 2, by -  bSize / 2,
+          (-0.025 - osc * 0.1) * Math.PI, (-0.05 + osc * 0.06) * Math.PI, 1.3, 1.5);
+        con.lineTo(bx - 0.8 * bSize / 2, by - bSize / 2);
+        con.closePath();
+        con.fill();
+      } else if (shrub == 1) {
+        con.beginPath();
+        con.moveTo(bx - 0.7 * bSize / 2, by - bSize / 2);
+        bezierCurve(con,
+          bx - 0.7 * bSize / 2, by - bSize / 2, bx - 0.8 * bSize / 2, by - 1.6 * bSize / 2,
+          (0.05 - osc * 0.1) * Math.PI, (0.1 - osc * 0.1) * Math.PI, 1.6, 1.4);
+        bezierCurve(con,
+          bx - 0.8 * bSize / 2, by - 1.6 * bSize / 2, bx - 0.4 * bSize / 2, by - 2.3 * bSize / 2,
+          (0.025 - osc * 0.1) * Math.PI, (0.05 + osc * 0.1) * Math.PI, 1.2, 1.3);
+        bezierCurve(con,
+          bx - 0.4 * bSize / 2, by - 2.3 * bSize / 2, bx + 0.1 * bSize / 2, by - 2.6 * bSize / 2,
+          (-0.05 - osc * 0.02) * Math.PI, (-0.1 + osc * 0.07) * Math.PI, 1.3, 1.5);
+        bezierCurve(con,
+          bx + 0.1 * bSize / 2, by - 2.6 * bSize / 2, bx + 0.4 * bSize / 2, by - 2.2 * bSize / 2,
+          (-0.05 + osc * 0.05) * Math.PI, (0.1 + osc * 0.03) * Math.PI, 2.1, 1.9);
+        bezierCurve(con,
+          bx + 0.4 * bSize / 2, by - 2.2 * bSize / 2, bx + 0.7 * bSize / 2, by - 1.7 * bSize / 2,
+          (0.05 - osc * 0.05) * Math.PI, (0.025 + osc * 0.1) * Math.PI, 1.9, 1.7);
+        bezierCurve(con,
+          bx + 0.7 * bSize / 2, by - 1.7 * bSize / 2, bx + 0.8 * bSize / 2, by -  bSize / 2,
+          (-0.025 - osc * 0.1) * Math.PI, (0.05 + osc * 0.06) * Math.PI, 1.8, 1.7);
+        con.lineTo(bx - 0.8 * bSize / 2, by - bSize / 2);
+        con.closePath();
+        con.fill();
+      } else if (shrub == 2) {
+        con.beginPath();
+        con.moveTo(bx - 0.5 * bSize / 2, by - bSize / 2);
+        bezierCurve(con,
+          bx - 0.5 * bSize / 2, by - bSize / 2, bx - 0.7 * bSize / 2, by - 1.5 * bSize / 2,
+          (0.025 + osc * 0.1) * Math.PI, (-0.05 + osc * 0.1) * Math.PI, 1.6, 1.4);
+        bezierCurve(con,
+          bx - 0.7 * bSize / 2, by - 1.5 * bSize / 2, bx - 0.5 * bSize / 2, by - 1.8 * bSize / 2,
+          (0.05 - osc * 0.1) * Math.PI, (-0.05 + osc * 0.1) * Math.PI, 1.2, 1.3);
+        bezierCurve(con,
+          bx - 0.5 * bSize / 2, by - 1.8 * bSize / 2, bx + 0.2 * bSize / 2, by - 2.1 * bSize / 2,
+          (-0.025 - osc * 0.02) * Math.PI, (-0.1 + osc * 0.07) * Math.PI, 1.3, 1.5);
+        bezierCurve(con,
+          bx + 0.2 * bSize / 2, by - 2.1 * bSize / 2, bx + 0.6 * bSize / 2, by - 1.7 * bSize / 2,
+          (0.05 - osc * 0.05) * Math.PI, (-0.1 + osc * 0.03) * Math.PI, 1.4, 1.2);
+        bezierCurve(con,
+          bx + 0.6 * bSize / 2, by - 1.7 * bSize / 2, bx + 0.9 * bSize / 2, by - 1.5 * bSize / 2,
+          (0.025 + osc * 0.05) * Math.PI, (0.05 - osc * 0.1) * Math.PI, 1.1, 1.6);
+        bezierCurve(con,
+          bx + 0.9 * bSize / 2, by - 1.5 * bSize / 2, bx + 0.8 * bSize / 2, by -  bSize / 2,
+          (0.025 + osc * 0.1) * Math.PI, (-0.05 - osc * 0.06) * Math.PI, 1.3, 1.5);
+        con.lineTo(bx - 0.8 * bSize / 2, by - bSize / 2);
+        con.closePath();
+        con.fill();
       }
     }
 

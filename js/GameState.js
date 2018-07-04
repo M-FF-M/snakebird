@@ -121,6 +121,11 @@ class GameState {
      */
     this.portalPos = [];
     /**
+     * Contains all the fruit positions
+     * @type {number[][]}
+     */
+    this.fruitPos = [];
+    /**
      * Contains the target position
      * @type {number[]}
      */
@@ -222,6 +227,7 @@ class GameState {
           } else if (c == '@') { // fruit
             this.fruits++;
             this.field[x][y] = FRUIT;
+            this.fruitPos.push([x, y]);
           } else if (c == '#') { // obstacle
             this.field[x][y] = OBSTACLE;
           } else if (c == '|') { // spike
@@ -290,6 +296,8 @@ class GameState {
     for (let i=0; i<this.lines.length; i++) ret.lines[i] = this.lines[i];
     for (let i=0; i<this.portalPos.length; i++)
       ret.portalPos[i] = [this.portalPos[i][0], this.portalPos[i][1]];
+    for (let i=0; i<this.fruitPos.length; i++)
+      ret.fruitPos[i] = [this.fruitPos[i][0], this.fruitPos[i][1]];
     ret.target = [this.target[0], this.target[1]];
     ret.fruits = this.fruits;
     ret.gameEnded = this.gameEnded;

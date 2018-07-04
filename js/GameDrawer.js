@@ -60,6 +60,7 @@ class GameDrawer {
     this._width = width;
     this._height = height;
     this._state = gameState;
+    this._fruitPortalTargetArr = [];
     this._gameBoard = gameBoard;
     this._newState = null;
     this._aniArray = null;
@@ -79,8 +80,23 @@ class GameDrawer {
     this._fallThrough = fallThrough;
     this._clickListeners = [];
     this._absoluteClickListeners = [];
+    this._calcFruitPortalTargetArr();
     this._canvas.addEventListener('click', this.click);
     this.draw();
+  }
+
+  _calcFruitPortalTargetArr() {
+    this._fruitPortalTargetArr = [];
+    for (let i=0; i<this._state.width; i++) {
+      this._fruitPortalTargetArr[i] = [];
+      for (let k=0; k<this._state.height; k++)
+        this._fruitPortalTargetArr[i][k] = this._state.getVal(i, k) == SPIKE ? SPIKE : EMPTY;
+    }
+    this._fruitPortalTargetArr[this._state.target[0]][this._state.target[1]] = TARGET;
+    for (let i=0; i<this._state.portalPos.length; i++)
+      this._fruitPortalTargetArr[this._state.portalPos[i][0]][this._state.portalPos[i][1]] = PORTAL;
+    for (let i=0; i<this._state.fruitPos.length; i++)
+      this._fruitPortalTargetArr[this._state.fruitPos[i][0]][this._state.fruitPos[i][1]] = FRUIT;
   }
 
   /**
@@ -125,6 +141,7 @@ class GameDrawer {
     const stClone = this._state.clone();
     this._snakeQueues = stClone.snakes;
     this._blockQueues = stClone.blocks;
+    this._calcFruitPortalTargetArr();
     this.draw();
   }
 
@@ -219,6 +236,7 @@ class GameDrawer {
    * to animate the game board
    */
   draw(isAniFrame = false) {
+    let undo = false;
     const [con, x, y, width, height, bWidth, bHeight] = [this._context, this._x, this._y, this._width,
       this._height, this._boardWidth, this._boardHeight];
     let state = this._state;
@@ -239,6 +257,7 @@ class GameDrawer {
         const stClone = this._state.clone();
         this._snakeQueues = stClone.snakes;
         this._blockQueues = stClone.blocks;
+        if (this._aniEnd < 0) undo = true;
       } else {
         const [snakes, blocks] = [this._snakeQueues, this._blockQueues];
         cStep = Math.floor(timePassed / STEP_LENGTH);
@@ -306,6 +325,8 @@ class GameDrawer {
         window.requestAnimationFrame(() => this.draw());
       }
     }
+
+    if (undo) this._gameBoard.undo();
   }
 
   /**
@@ -365,8 +386,12 @@ class GameDrawer {
           state.getVal(sx + 1, sy + 1, this._fallThrough ? WRAP_AROUND : EMPTY),
           state.getVal(sx - 1, sy + 1, this._fallThrough ? WRAP_AROUND : EMPTY)];
         // 0 left, 1 right, 2 top, 3 bottom, 4 top left, 5 top right, 6 bottom right, 7 bottom left
+        let noShrub = false;
+        if (sy - 1 >= 0 && (this._fruitPortalTargetArr[sx][sy - 1] == FRUIT
+          || this._fruitPortalTargetArr[sx][sy - 1] == PORTAL
+          || this._fruitPortalTargetArr[sx][sy - 1] == SPIKE)) noShrub = true;
         if (val == OBSTACLE) {
-          drawGrass(con, bx, by, adjVals, bSize, sx, sy, globalTime);
+          drawGrass(con, bx, by, adjVals, bSize, sx, sy, globalTime, noShrub);
         }
       }
     }
