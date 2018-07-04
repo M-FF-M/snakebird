@@ -3,7 +3,7 @@
  * Whether to turn off cyclic animations for development purposes
  * @type {boolean}
  */
-const TURN_OFF_CYCLIC_ANIMATIONS = false;
+const TURN_OFF_CYCLIC_ANIMATIONS = true;
 
 /**
  * Specifies the margin around the game board (in pixels)

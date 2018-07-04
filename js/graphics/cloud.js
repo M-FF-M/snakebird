@@ -66,6 +66,12 @@ function calcLen(randVec) {
   };
 }
 
+/**
+ * Generate an array with points on the cloud's polygon border
+ * @param {number} width the width of the cloud in pixels
+ * @param {number} numOfPoints the number of points the polygon should be made of
+ * @return {number[][]} the array with cloud points
+ */
 function generateCloud(width, numOfPoints) {
   const randVec = [Math.random() * 0.05 - 0.025, Math.random() * 0.05 - 0.025, Math.random() * 0.05 - 0.025];
   const l = calcLen(randVec);
@@ -98,6 +104,12 @@ function generateCloud(width, numOfPoints) {
   return retArr;
 }
 
+/**
+ * Scale the array with cloud points
+ * @param {numnber[][]} inArr an array returned by generateCloud()
+ * @param {number} sc the scaling factor
+ * @return {number[][]} the adapted array
+ */
 function scaleCloudArr(inArr, sc) {
   const retArr = [];
   for (let i=0; i<inArr.length; i++) {
@@ -106,6 +118,13 @@ function scaleCloudArr(inArr, sc) {
   return retArr;
 }
 
+/**
+ * Move the array with cloud points
+ * @param {number[][]} inArr an array returned by generateCloud()
+ * @param {number} dx the x offset to move the points by
+ * @param {number} dy the y offset to move the points by
+ * @return {number[][]} the adapted array
+ */
 function moveCloudArr(inArr, dx, dy) {
   const retArr = [];
   for (let i=0; i<inArr.length; i++) {
@@ -114,6 +133,13 @@ function moveCloudArr(inArr, dx, dy) {
   return retArr;
 }
 
+/**
+ * Draw a cloud path on the canvas (beginPath() and closePath() are called, but not fill())
+ * @param {CanvasRenderingContext2D} con the context of the canvas the path be drawn on
+ * @param {number[][]} pointArr an array returned by generateCloud()
+ * @param {number} [ox] a x offset to move the points by
+ * @param {number} [oy] a y offset to move the points by
+ */
 function drawCloudPath(con, pointArr, ox = 0, oy = 0) {
   con.beginPath();
   con.moveTo(pointArr[0][0] + ox, pointArr[0][1] + oy);
