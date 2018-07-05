@@ -31,6 +31,7 @@ class GameBoard {
     this.canvasClick = this.canvasClick.bind(this);
     this.press = this.press.bind(this);
     this.mouseMoved = this.mouseMoved.bind(this);
+    this.mouseWheel = this.mouseWheel.bind(this);
     /**
      * Counts the number of moves needed to reach the current state
      * @type {number}
@@ -89,9 +90,10 @@ class GameBoard {
     this._activeSnake = this._state.snakeToCharacter[0];
     this._drawer.addEventListener('click', this.click);
     this._drawer.addEventListener('absolute click', this.canvasClick);
+    this._drawer.addEventListener('mousemove', this.mouseMoved);
     window.addEventListener('resize', this.resize);
     window.addEventListener('keypress', this.press);
-    this._canvasArr[1].addEventListener('mousemove', this.mouseMoved);
+    window.addEventListener('wheel', this.mouseWheel);
     this.drawInfoLine();
   }
 
@@ -309,6 +311,20 @@ class GameBoard {
   }
 
   /**
+   * This method should be called when a the mouse wheel was turned
+   * @param {object} event the event object
+   */
+  mouseWheel(event) {
+    if (event.deltaY < 0) {
+      event.preventDefault();
+      this._drawer.zoomIn();
+    } else if (event.deltaY > 0) {
+      event.preventDefault();
+      this._drawer.zoomOut();
+    }
+  }
+
+  /**
    * This method should be called when a key was pressed
    * @param {object} event the event object
    */
@@ -316,12 +332,16 @@ class GameBoard {
     const key = event.key.toLowerCase();
     const oldState = this._state.toString(); let check = false;
     if (key === 'a' || key === 'arrowleft') {
+      event.preventDefault();
       this._state = this._drawer.tryMove(this._activeSnake, LEFT); check = true;
     } else if (key === 'd' || key === 'arrowright') {
+      event.preventDefault();
       this._state = this._drawer.tryMove(this._activeSnake, RIGHT); check = true;
     } else if (key === 'w' || key === 'arrowup') {
+      event.preventDefault();
       this._state = this._drawer.tryMove(this._activeSnake, UP); check = true;
     } else if (key === 's' || key === 'arrowdown') {
+      event.preventDefault();
       this._state = this._drawer.tryMove(this._activeSnake, DOWN); check = true;
     } else if (key === 'z' && event.ctrlKey) {
       event.preventDefault();
@@ -332,6 +352,12 @@ class GameBoard {
     } else if (key === 'r' && event.ctrlKey) {
       event.preventDefault();
       this.restart();
+    } else if (key === '+') {
+      event.preventDefault();
+      this._drawer.zoomIn();
+    } else if (key === '-') {
+      event.preventDefault();
+      this._drawer.zoomOut();
     }
     if (check && oldState !== this._state.toString()) {
       while (this._stateStackIdx != this._stateStack.length - 1) this._stateStack.pop();

@@ -53,6 +53,14 @@ class GameDrawer {
       noCyclicAni = false, noAni = false) {
     this.draw = this.draw.bind(this);
     this.click = this.click.bind(this);
+    this.mouseDown = this.mouseDown.bind(this);
+    this.mouseUp = this.mouseUp.bind(this);
+    this.mouseMove = this.mouseMove.bind(this);
+    this.mouseLeave = this.mouseLeave.bind(this);
+    this._applyZoom = this._applyZoom.bind(this);
+    this._mouseDownTime = 0;
+    this._lastMouseCoords = [0, 0];
+    this._mouseIsDown = false;
     this._canvas = canvas;
     this._context = this._canvas.getContext('2d');
     this._x = x;
@@ -77,12 +85,25 @@ class GameDrawer {
     const stClone = this._state.clone();
     this._snakeQueues = stClone.snakes;
     this._blockQueues = stClone.blocks;
+    this._zoomLevel = 1;
+    this._isZooming = false;
+    this._destZoomLvl = 1;
+    this._oldZoom = 1;
+    this._destCenterCoords = [0.5, 0.5];
+    this._oldCenterCoords = [0.5, 0.5];
+    this._zoomStartTime = 0;
+    this._centerCoords = [0.5, 0.5];
     this._fallThrough = fallThrough;
     this._currentGravity = DOWN;
     this._clickListeners = [];
     this._absoluteClickListeners = [];
+    this._mouseMoveListeners = [];
     this._calcFruitPortalTargetArr();
     this._canvas.addEventListener('click', this.click);
+    this._canvas.addEventListener('mousedown', this.mouseDown);
+    this._canvas.addEventListener('mouseup', this.mouseUp);
+    this._canvas.addEventListener('mousemove', this.mouseMove);
+    this._canvas.addEventListener('mouseleave', this.mouseLeave);
     this.draw();
   }
 
@@ -144,15 +165,17 @@ class GameDrawer {
     this._snakeQueues = stClone.snakes;
     this._blockQueues = stClone.blocks;
     this._calcFruitPortalTargetArr();
+    this._checkZoomAndCenter();
     this.draw();
   }
 
   /**
    * Add an event listener to this game drawer
    * @param {string} type a string specifying the type of event the listener should listen to. Currently,
-   * only 'click' and 'absolute click' is supported - 'click' listens for clicks on grid cells,
-   * 'absolute click' for general clicks on the canvas. The respective event handlers will be called
-   * with the coordinates of the grid cell and the absolute mouse coordinates, respectively.
+   * only 'click', 'absolute click' and 'mousemove' is supported - 'click' listens for clicks on grid
+   * cells, 'absolute click' for general clicks on the canvas. The respective event handlers will be
+   * called with the coordinates of the grid cell and the absolute mouse coordinates, respectively.
+   * The event handler for 'mousemove' will be called with the event object itself.
    * @param {Function} listener the event listener that will be called when the specified event occurred
    */
   addEventListener(type, listener) {
@@ -160,6 +183,8 @@ class GameDrawer {
       this._clickListeners.push(listener);
     } else if (type === 'absolute click') {
       this._absoluteClickListeners.push(listener);
+    } else if (type === 'mousemove') {
+      this._mouseMoveListeners.push(listener);
     }
   }
 
@@ -168,19 +193,80 @@ class GameDrawer {
    * @param {object} event the event object
    */
   click(event) {
-    if (!this._animationRunning) {
-      let [xp, yp] = [event.clientX, event.clientY];
-      const [w, h, ax, ay, bSize, bCoord] = this.getDimVars();
-      xp -= ax; yp -= ay;
-      if (xp >= 0 && yp >= 0 && xp < w && yp < h) {
-        const [xb, yb] = [Math.floor(xp / bSize), Math.floor(yp / bSize)];
-        for (let i=0; i<this._clickListeners.length; i++) {
-          this._clickListeners[i](xb, yb);
+    if ((new Date()).getTime() - this._mouseDownTime < 250) {
+      if (!this._animationRunning) {
+        let [xp, yp] = [event.clientX, event.clientY];
+        const [w, h, ax, ay, bSize, bCoord] = this.getDimVars();
+        const [cenx, ceny] = [ax + 0.5 * w, ay + 0.5 * h];
+        xp -= cenx; yp -= ceny; xp /= this._zoomLevel * w; yp /= this._zoomLevel * h;
+        xp += this._centerCoords[0]; yp += this._centerCoords[1];
+        if (xp >= 0 && yp >= 0 && xp < 1 && yp < 1) {
+          const [xb, yb] = [Math.floor(w * xp / bSize), Math.floor(h * yp / bSize)];
+          for (let i=0; i<this._clickListeners.length; i++) {
+            this._clickListeners[i](xb, yb);
+          }
         }
       }
+      for (let i=0; i<this._absoluteClickListeners.length; i++)
+        this._absoluteClickListeners[i](event.clientX, event.clientY);
     }
-    for (let i=0; i<this._absoluteClickListeners.length; i++)
-      this._absoluteClickListeners[i](event.clientX, event.clientY);
+  }
+
+  /**
+   * This method should be called when a 'mousedown' event was detetcted
+   * @param {object} event the event object
+   */
+  mouseDown(event) {
+    this._mouseDownTime = (new Date()).getTime();
+    this._mouseIsDown = true;
+    this._lastMouseCoords = [event.clientX, event.clientY];
+  }
+
+  /**
+   * This method should be called when a 'mouseup' event was detetcted
+   * @param {object} event the event object
+   */
+  mouseUp(event) {
+    if ((new Date()).getTime() - this._mouseDownTime >= 250) {
+      this._translate(event.clientX, event.clientY);
+    }
+    this._mouseIsDown = false;
+  }
+
+  /**
+   * This method should be called when a 'mouseleave' event was detetcted
+   * @param {object} event the event object
+   */
+  mouseLeave(event) {
+    if (this._mouseIsDown && ((new Date()).getTime() - this._mouseDownTime >= 250)) {
+      this._translate(event.clientX, event.clientY);
+    }
+    this._mouseIsDown = false;
+  }
+
+  /**
+   * This method should be called when a 'mousemove' event was detetcted
+   * @param {object} event the event object
+   */
+  mouseMove(event) {
+    if (this._mouseIsDown && ((new Date()).getTime() - this._mouseDownTime >= 250)) {
+      this._translate(event.clientX, event.clientY);
+    }
+    this._lastMouseCoords = [event.clientX, event.clientY];
+    for (let i=0; i<this._mouseMoveListeners.length; i++)
+      this._mouseMoveListeners[i](event);
+  }
+
+  _translate(nx, ny) {
+    if (!this._isZooming) {
+      const [w, h, ax, ay, bSize, bCoord] = this.getDimVars();
+      const dx = this._lastMouseCoords[0] - nx;
+      const dy = this._lastMouseCoords[1] - ny;
+      this._centerCoords[0] += (dx / w) / this._zoomLevel;
+      this._centerCoords[1] += (dy / h) / this._zoomLevel;
+      this._checkZoomAndCenter();
+      this.draw();
+    }
   }
 
   /**
@@ -196,6 +282,84 @@ class GameDrawer {
     this._width = width;
     this._height = height;
     this.draw();
+  }
+
+  /**
+   * Apply the current zoom to a canvas (once all draw operations were finished, you should call
+   * con.restore())
+   * @param {CanvasRenderingContext2D} con the context to apply the zoom on
+   */
+  _applyZoom(con) {
+    const [w, h, ax, ay, bSize, bCoord] = this.getDimVars();
+    con.save();
+    if (this._zoomLevel > 1) {
+      con.translate(ax + 0.5 * w, ay + 0.5 * h);
+      con.scale(this._zoomLevel, this._zoomLevel);
+      con.translate(- ax - this._centerCoords[0] * w, - ay - this._centerCoords[1] * h);
+    }
+  }
+
+  /**
+   * Checks whether zoom and center variables are valid (not out of bounds)
+   */
+  _checkZoomAndCenter() {
+    const [w, h, ax, ay, bSize, bCoord] = this.getDimVars();
+    if (this._zoomLevel * bSize > 200) this._zoomLevel = 200 / bSize;
+    if (this._zoomLevel <= 1) {
+      this._zoomLevel = 1;
+      this._centerCoords = [0.5, 0.5];
+    } else {
+      const lx = 0.5 - this._centerCoords[0] * this._zoomLevel;
+      const rx = 0.5 + (1 - this._centerCoords[0]) * this._zoomLevel;
+      if (lx > 0) this._centerCoords[0] = 0.5 / this._zoomLevel;
+      else if (rx < 1) this._centerCoords[0] = (- 0.5 + this._zoomLevel) / this._zoomLevel;
+      const ty = 0.5 - this._centerCoords[1] * this._zoomLevel;
+      const by = 0.5 + (1 - this._centerCoords[1]) * this._zoomLevel;
+      if (ty > 0) this._centerCoords[1] = 0.5 / this._zoomLevel;
+      else if (by < 1) this._centerCoords[1] = (- 0.5 + this._zoomLevel) / this._zoomLevel;
+    }
+  }
+
+  /**
+   * Zoom in
+   */
+  zoomIn() {
+    if (!this._isZooming) {
+      this._oldCenterCoords = this._centerCoords.slice();
+      this._oldZoom = this._zoomLevel;
+      this._zoomLevel *= 1.5;
+      this._checkZoomAndCenter();
+      this._destZoomLvl = this._zoomLevel;
+      this._zoomLevel = this._oldZoom;
+      this._destCenterCoords = this._centerCoords;
+      this._centerCoords = this._oldCenterCoords;
+      if (this._destZoomLvl != this._oldZoom) {
+        this._isZooming = true;
+        this._zoomStartTime = (new Date()).getTime();
+        this.draw();
+      }
+    }
+  }
+
+  /**
+   * Zoom out
+   */
+  zoomOut() {
+    if (!this._isZooming) {
+      this._oldCenterCoords = this._centerCoords.slice();
+      this._oldZoom = this._zoomLevel;
+      this._zoomLevel /= 1.5;
+      this._checkZoomAndCenter();
+      this._destZoomLvl = this._zoomLevel;
+      this._zoomLevel = this._oldZoom;
+      this._destCenterCoords = this._centerCoords;
+      this._centerCoords = this._oldCenterCoords;
+      if (this._destZoomLvl != this._oldZoom) {
+        this._isZooming = true;
+        this._zoomStartTime = (new Date()).getTime();
+        this.draw();
+      }
+    }
   }
 
   /**
@@ -241,6 +405,21 @@ class GameDrawer {
     let undo = false;
     const [con, x, y, width, height, bWidth, bHeight] = [this._context, this._x, this._y, this._width,
       this._height, this._boardWidth, this._boardHeight];
+    con.clearRect(0, 0, this._canvas.width, this._canvas.height);
+    if (this._isZooming) {
+      let tP = (new Date()).getTime() - this._zoomStartTime;
+      if (tP >= STEP_LENGTH || this._noAni) {
+        this._isZooming = false;
+        this._zoomLevel = this._destZoomLvl;
+        this._centerCoords = this._destCenterCoords;
+      } else {
+        tP /= STEP_LENGTH;
+        this._zoomLevel = (1 - tP) * this._oldZoom + tP * this._destZoomLvl;
+        this._centerCoords = [(1 - tP) * this._oldCenterCoords[0] + tP * this._destCenterCoords[0],
+          (1 - tP) * this._oldCenterCoords[1] + tP * this._destCenterCoords[1]];
+      }
+    }
+    this._applyZoom(con);
     let state = this._state;
     const [w, h, ax, ay, bSize, bCoord] = this.getDimVars();
 
@@ -281,8 +460,6 @@ class GameDrawer {
     }
 
     const [snakes, blocks] = [this._snakeQueues, this._blockQueues];
-
-    con.clearRect(ax, ay, w, h);
 
     let fruitProg = this._state.fruits;
     if (this._animationRunning && this._aniAteFruit && cStep == 0) {
@@ -339,6 +516,7 @@ class GameDrawer {
     };
 
     const con2 = getHiddenContext(this._canvas, true, 0); // for only drawing the required border parts
+    this._applyZoom(con2);
     let baseColor = 'rgba(55, 117, 161, '; // default color specifying end of game board
     if (this._fallThrough) baseColor = 'rgba(248, 80, 127, '; // color for fallThrough option
     const topBorder = con2.createLinearGradient(ax, 0, ax + w, 0);
@@ -370,6 +548,7 @@ class GameDrawer {
     con2.fillStyle = leftBorder; if (this._fallThrough || this._currentGravity != LEFT) leftPath(con2);
 
     const con3 = getHiddenContext(this._canvas, true, 1); // to fade-out the border with increasing distance
+    this._applyZoom(con3);
     const topGradient = con3.createLinearGradient(0, ay, 0, ay - bSize / 2);
     topGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
     topGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
@@ -388,19 +567,57 @@ class GameDrawer {
     con3.fillStyle = bottomGradient; bottomPath(con3);
     con3.fillStyle = leftGradient; leftPath(con3);
 
+    con2.restore();
     con2.globalCompositeOperation = 'destination-in'; // combine hidden canvases
     drawHiddenCanvas(con2, 1);
     con2.globalCompositeOperation = 'source-over';
-    drawHiddenCanvas(con, 0); // draw border on actual canvas
+    drawHiddenCanvas(con, 0, this._applyZoom); // draw border on actual canvas
+
+    con.restore();
+    con3.restore();
+
+    // check if target is visible
+    let [atx, aty] = [
+      ((state.target[0] + 0.5) / state.width - this._centerCoords[0]) * w * this._zoomLevel + ax + 0.5 * w,
+      ((state.target[1] + 0.5) / state.height - this._centerCoords[1]) * h * this._zoomLevel + ay + 0.5 * h];
+    if (atx < this._x || aty < this._y || atx - this._x >= this._width || aty - this._y >= this._height) {
+      const bbSize = bSize * this._zoomLevel;
+      const [otx, oty] = [atx, aty];
+      if (atx < this._x + bbSize * (0.5 * SQRT_2)) atx = this._x + bbSize * (0.5 * SQRT_2);
+      if (aty < this._y + bbSize * (0.5 * SQRT_2)) aty = this._y + bbSize * (0.5 * SQRT_2);
+      if (atx - this._x > this._width - bbSize * (0.5 * SQRT_2)) atx = this._x + this._width - bbSize * (0.5 * SQRT_2);
+      if (aty - this._y > this._height - bbSize * (0.5 * SQRT_2)) aty = this._y + this._height - bbSize * (0.5 * SQRT_2);
+      const ang = Math.atan2(oty - aty, otx - atx);
+      const angA = ang + 0.25 * Math.PI; const angB = ang - 0.25 * Math.PI;
+      const middlex = Math.cos(ang); const middley = Math.sin(ang);
+      let osc = Math.sin(Math.PI * (globalTime % 0.5) / 0.5); osc *= osc;
+      const [addx, addy] = [-osc * middlex * bbSize * 0.2, -osc * middley * bbSize * 0.2];
+      con.fillStyle = 'rgba(255, 255, 255, 1)';
+      con.beginPath();
+      con.arc(atx + addx, aty + addy, bbSize * 0.4, 0, 2 * Math.PI);
+      con.closePath();
+      con.fill();
+      con.beginPath();
+      con.moveTo(atx + addx, aty + addy);
+      con.lineTo(atx + addx + Math.cos(angA) * bbSize * 0.4, aty + addy + Math.sin(angA) * bbSize * 0.4);
+      con.lineTo(atx + addx + middlex * bbSize * 0.4 * SQRT_2, aty + addy + middley * bbSize * 0.4 * SQRT_2);
+      con.lineTo(atx + addx + Math.cos(angB) * bbSize * 0.4, aty + addy + Math.sin(angB) * bbSize * 0.4);
+      con.lineTo(atx + addx, aty + addy);
+      con.closePath();
+      con.fill();
+      drawTarget(con, this._canvas, atx + addx, aty + addy, bbSize / 4, globalSlowTime, fruitProg);
+    }
 
     this._gameBoard.drawBackground(!this._noCyclicAni);
 
     if (!TURN_OFF_CYCLIC_ANIMATIONS) {
       if (isAniFrame && !this._noCyclicAni) {
         window.requestAnimationFrame(() => this.draw(true));
+      } else if (this._noCyclicAni && !this._noAni && (this._animationRunning || this._isZooming)) {
+        window.requestAnimationFrame(() => this.draw());
       }
     } else {
-      if (this._animationRunning) {
+      if (this._animationRunning || this._isZooming) {
         window.requestAnimationFrame(() => this.draw());
       }
     }
@@ -495,7 +712,7 @@ class GameDrawer {
       drawPortalBack(con, px, py, bSize, globalTime);
     }
     const [tx, ty] = bCoord(this._state.target[0], this._state.target[1]);
-    drawTarget(con, this._canvas, tx, ty, bSize, globalSlowTime, fruitProg);
+    drawTarget(con, this._canvas, tx, ty, bSize, globalSlowTime, fruitProg, this._applyZoom);
     for (let sx=0; sx<state.width; sx++) {
       for (let sy=0; sy<state.height; sy++) {
         const [bx, by] = bCoord(sx, sy);

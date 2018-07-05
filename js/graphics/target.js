@@ -9,13 +9,15 @@
  * @param {number} globalSlowTime a number between 0 and 1 that is used for cyclic animations
  * @param {number} fruits the number of remaining fruits (influences the size of the target). Transitions
  * can be animated via floating point values.
+ * @param {Function} [zoom] a function that applies a zoom and a translation to the context
  */
-function drawTarget(con, can, bx, by, bSize, globalSlowTime, fruits) {
+function drawTarget(con, can, bx, by, bSize, globalSlowTime, fruits, zoom) {
   const osc = Math.sin(globalSlowTime * 2 * Math.PI) * 0.15;
   const colorArr = ['rgba(98, 255, 97, 1)', 'rgba(81, 233, 239, 1)', 'rgba(94, 161, 248, 1)',
     'rgba(181, 106, 245, 1)', 'rgba(248, 80, 127, 1)', 'rgba(255, 145, 84, 1)', 'rgba(253, 233, 88, 1)'];
   const sAng = (-0.5 + globalSlowTime * 2) * Math.PI; const angStep = 2 * Math.PI / colorArr.length;
   const con2 = getHiddenContext(can);
+  if (typeof zoom === 'function') zoom(con2);
   for (let i=0; i<colorArr.length; i++) {
     const cAng = sAng + angStep * i;
     const nAng = sAng + angStep * (i + 1);
@@ -56,5 +58,6 @@ function drawTarget(con, can, bx, by, bSize, globalSlowTime, fruits) {
   con2.closePath();
   con2.fill();
   con2.globalCompositeOperation = 'source-over';
-  drawHiddenCanvas(con);
+  drawHiddenCanvas(con, 0, zoom);
+  if (typeof zoom === 'function') con2.restore();
 }

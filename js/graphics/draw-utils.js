@@ -47,9 +47,12 @@ function getHiddenContext(visibleCanvas, clear = true, idx = 0) {
  * Draw a hidden canvas onto another canvas
  * @param {CanvasRenderingContext2D} con the context of the canvas to draw the hidden canvas on
  * @param {number} [idx] the index of the hidden canvas
+ * @param {Function} [zoom] a function that applies a zoom and a translation to the context
  */
-function drawHiddenCanvas(con, idx = 0) {
+function drawHiddenCanvas(con, idx = 0, zoom) {
+  if (typeof zoom === 'function') con.restore();
   con.drawImage(GLOBAL_HIDDEN_CAN_ARR[idx], 0, 0);
+  if (typeof zoom === 'function') zoom(con);
 }
 
 /**
