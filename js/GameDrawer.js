@@ -731,11 +731,24 @@ class GameDrawer {
         } else if (val == SPIKE) {
           // spikes are in front of objects
         } else if (val == FRUIT) {
-          con.fillStyle = 'rgba(255, 0, 0, 1)';
-          con.beginPath();
-          con.arc(bx, by, bSize / 2.5, 0, 2 * Math.PI);
-          con.closePath();
-          con.fill();
+          let type = 0;
+          for (let i=0; i<state.fruitPos.length; i++) {
+            if (this._state.fruitPos[i][0] == sx && this._state.fruitPos[i][1] == sy) {
+              type = i;
+              break;
+            }
+          }
+          let startidx = 0; const [ffx, ffy] = [this._state.fruitPos[0][0] % 3, this._state.fruitPos[0][1] % 3];
+          if (ffx == 0 && ffy == 0) startidx = 1;
+          else if (ffx == 1 && ffy == 0) startidx = 2;
+          else if (ffx == 2 && ffy == 0) startidx = 3;
+          else if (ffx == 0 && ffy == 1) startidx = 4;
+          else if (ffx == 1 && ffy == 1) startidx = 5;
+          else if (ffx == 2 && ffy == 1) startidx = 6;
+          else if (ffx == 0 && ffy == 2) startidx = 3;
+          else if (ffx == 1 && ffy == 2) startidx = 5;
+          type += startidx;
+          drawFruit(con, bx, by, bSize, globalTime, type);
         } else if (val == PORTAL) { // half in front, half in back
           // portal position is taken from game state
         } else if (val == TARGET) {
