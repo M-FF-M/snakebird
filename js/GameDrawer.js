@@ -78,6 +78,7 @@ class GameDrawer {
     this._snakeQueues = stClone.snakes;
     this._blockQueues = stClone.blocks;
     this._fallThrough = fallThrough;
+    this._currentGravity = DOWN;
     this._clickListeners = [];
     this._absoluteClickListeners = [];
     this._calcFruitPortalTargetArr();
@@ -107,6 +108,7 @@ class GameDrawer {
    * @return {GameState} the new game state (or the old one if the move was invalid)
    */
   tryMove(snake, direction, gravity = DOWN) {
+    this._currentGravity = gravity;
     if (!this._animationRunning && this._state.snakeMap.has(snake) && !this._state.gameEnded) {
       const moveRes = gameTransition(this._state, snake, direction, this._fallThrough, gravity);
       if (moveRes !== null) {
@@ -288,17 +290,23 @@ class GameDrawer {
     }
     this.drawBoardBack(state, con, bSize, bCoord, globalTime, globalSlowTime, fruitProg);
 
+    const borderArr = [];
+    for (let i=0; i<this._state.width; i++) {
+      borderArr[i] = [];
+      for (let k=0; k<this._state.height; k++)
+        borderArr[i][k] = 0;
+    }
     for (let i=0; i<snakes.length; i++) {
       if (this._animationRunning && i == this._aniSnakeMoveInd)
         this.drawSnake(state, con, bSize, bCoord, snakes[i], COLOR_MAP[state.snakeToCharacter[i]],
-          snakeOffsets[i], cStep == 0 ? cStepT : 2);
+          snakeOffsets[i], borderArr, cStep == 0 ? cStepT : 2);
       else
         this.drawSnake(state, con, bSize, bCoord, snakes[i], COLOR_MAP[state.snakeToCharacter[i]],
-          snakeOffsets[i]);
+          snakeOffsets[i], borderArr);
     }
     for (let i=0; i<blocks.length; i++) {
       this.drawBlock(state, con, bSize, bCoord, blocks[i],
-        COLOR_MAP[state.blockToCharacter[i].toUpperCase()], blockOffsets[i]);
+        COLOR_MAP[state.blockToCharacter[i].toUpperCase()], blockOffsets[i], borderArr);
     }
 
     this.drawBoardFront(state, con, bSize, bCoord, globalTime, globalSlowTime);
@@ -308,13 +316,84 @@ class GameDrawer {
     con.fillRect(ax, ay, w, h);
     con.globalCompositeOperation = 'source-over';
 
-    this._gameBoard.drawBackground(!this._noCyclicAni);
+    // make border of game board visible
+    const topPath = ctx => {
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax - bSize / 2, ay - bSize / 2);
+      ctx.lineTo(ax + w + bSize / 2, ay - bSize / 2); ctx.lineTo(ax + w, ay);
+      ctx.lineTo(ax, ay); ctx.closePath(); ctx.fill();
+    };
+    const rightPath = ctx => {
+      ctx.beginPath(); ctx.moveTo(ax + w, ay); ctx.lineTo(ax + w + bSize / 2, ay - bSize / 2);
+      ctx.lineTo(ax + w + bSize / 2, ay + h + bSize / 2); ctx.lineTo(ax + w, ay + h);
+      ctx.lineTo(ax + w, ay); ctx.closePath(); ctx.fill();
+    };
+    const bottomPath = ctx => {
+      ctx.beginPath(); ctx.moveTo(ax + w, ay + h); ctx.lineTo(ax + w + bSize / 2, ay + h + bSize / 2);
+      ctx.lineTo(ax - bSize / 2, ay + h + bSize / 2); ctx.lineTo(ax, ay + h);
+      ctx.lineTo(ax + w, ay + h); ctx.closePath(); ctx.fill();
+    };
+    const leftPath = ctx => {
+      ctx.beginPath(); ctx.moveTo(ax, ay + h); ctx.lineTo(ax - bSize / 2, ay + h + bSize / 2);
+      ctx.lineTo(ax - bSize / 2, ay - bSize / 2); ctx.lineTo(ax, ay);
+      ctx.lineTo(ax, ay + h); ctx.closePath(); ctx.fill();
+    };
 
-    /* con.fillStyle = 'rgba(0, 51, 102, 1)';
-    con.fillRect(x, y, ax - x, height);
-    con.fillRect(x, y, width, ay - y);
-    con.fillRect(ax + w, y, width - ax - w, height);
-    con.fillRect(x, ay + h, width, height - ay - h); */
+    const con2 = getHiddenContext(this._canvas, true, 0); // for only drawing the required border parts
+    let baseColor = 'rgba(55, 117, 161, '; // default color specifying end of game board
+    if (this._fallThrough) baseColor = 'rgba(248, 80, 127, '; // color for fallThrough option
+    const topBorder = con2.createLinearGradient(ax, 0, ax + w, 0);
+    const rightBorder = con2.createLinearGradient(0, ay, 0, ay + h);
+    const bottomBorder = con2.createLinearGradient(ax, 0, ax + w, 0);
+    const leftBorder = con2.createLinearGradient(0, ay, 0, ay + h);
+    const xStep = 1 / this._state.width;
+    const yStep = 1 / this._state.height;
+    topBorder.addColorStop(0, `${baseColor}0)`);
+    rightBorder.addColorStop(0, `${baseColor}0)`);
+    bottomBorder.addColorStop(0, `${baseColor}0)`);
+    leftBorder.addColorStop(0, `${baseColor}0)`);
+    for (let i=0; i<this._state.height; i++) {
+      rightBorder.addColorStop((i + 0.5) * yStep, `${baseColor}${borderArr[this._state.width - 1][i]})`);
+      leftBorder.addColorStop((i + 0.5) * yStep, `${baseColor}${borderArr[0][i]})`);
+    }
+    for (let i=0; i<this._state.width; i++) {
+      bottomBorder.addColorStop((i + 0.5) * xStep, `${baseColor}${borderArr[i][this._state.height - 1]})`);
+      topBorder.addColorStop((i + 0.5) * xStep, `${baseColor}${borderArr[i][0]})`);
+    }
+    topBorder.addColorStop(1, `${baseColor}0)`);
+    rightBorder.addColorStop(1, `${baseColor}0)`);
+    bottomBorder.addColorStop(1, `${baseColor}0)`);
+    leftBorder.addColorStop(1, `${baseColor}0)`);
+
+    con2.fillStyle = topBorder; if (this._fallThrough || this._currentGravity != UP) topPath(con2);
+    con2.fillStyle = rightBorder; if (this._fallThrough || this._currentGravity != RIGHT) rightPath(con2);
+    con2.fillStyle = bottomBorder; if (this._fallThrough || this._currentGravity != DOWN) bottomPath(con2);
+    con2.fillStyle = leftBorder; if (this._fallThrough || this._currentGravity != LEFT) leftPath(con2);
+
+    const con3 = getHiddenContext(this._canvas, true, 1); // to fade-out the border with increasing distance
+    const topGradient = con3.createLinearGradient(0, ay, 0, ay - bSize / 2);
+    topGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    topGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    const rightGradient = con3.createLinearGradient(ax + w, 0, ax + w + bSize / 2, 0);
+    rightGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    rightGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    const bottomGradient = con3.createLinearGradient(0, ay + h, 0, ay + h + bSize / 2);
+    bottomGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    bottomGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    const leftGradient = con3.createLinearGradient(ax, 0, ax - bSize / 2, 0);
+    leftGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    leftGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+    con3.fillStyle = topGradient; topPath(con3);
+    con3.fillStyle = rightGradient; rightPath(con3);
+    con3.fillStyle = bottomGradient; bottomPath(con3);
+    con3.fillStyle = leftGradient; leftPath(con3);
+
+    con2.globalCompositeOperation = 'destination-in'; // combine hidden canvases
+    drawHiddenCanvas(con2, 1);
+    con2.globalCompositeOperation = 'source-over';
+    drawHiddenCanvas(con, 0); // draw border on actual canvas
+
+    this._gameBoard.drawBackground(!this._noCyclicAni);
 
     if (!TURN_OFF_CYCLIC_ANIMATIONS) {
       if (isAniFrame && !this._noCyclicAni) {
@@ -411,6 +490,12 @@ class GameDrawer {
    * @param {number} fruitProg a number indicating how many fruits are present on the board
    */
   drawBoardBack(state, con, bSize, bCoord, globalTime, globalSlowTime, fruitProg) {
+    for (let i=0; i<this._state.portalPos.length; i++) {
+      const [px, py] = bCoord(this._state.portalPos[i][0], this._state.portalPos[i][1]);
+      drawPortalBack(con, px, py, bSize, globalTime);
+    }
+    const [tx, ty] = bCoord(this._state.target[0], this._state.target[1]);
+    drawTarget(con, this._canvas, tx, ty, bSize, globalSlowTime, fruitProg);
     for (let sx=0; sx<state.width; sx++) {
       for (let sy=0; sy<state.height; sy++) {
         const [bx, by] = bCoord(sx, sy);
@@ -441,12 +526,6 @@ class GameDrawer {
         }
       }
     }
-    for (let i=0; i<this._state.portalPos.length; i++) {
-      const [px, py] = bCoord(this._state.portalPos[i][0], this._state.portalPos[i][1]);
-      drawPortalBack(con, px, py, bSize, globalTime);
-    }
-    const [tx, ty] = bCoord(this._state.target[0], this._state.target[1]);
-    drawTarget(con, this._canvas, tx, ty, bSize, globalSlowTime, fruitProg);
   }
 
   /**
@@ -460,11 +539,13 @@ class GameDrawer {
    * @param {Queue} partQ a queue with the body parts of the snake
    * @param {string} color the color of the snake
    * @param {number[]} offset the offset the snake should be moved by
+   * @param {number[][]} borderArr an array that will be modified to reflect whether a snake is close
+   * to the game board border
    * @param {number} [mvSnProg] if not -1, either between 0 and 1, specifying the progress of the first
    * movement of the snake's head or 2, specifying that the snake already moved its head (if it is -1,
    * this snake only falls but was not actively moved by the player)
    */
-  drawSnake(state, con, bSize, bCoord, partQ, color, offset, mvSnProg = -1) {
+  drawSnake(state, con, bSize, bCoord, partQ, color, offset, borderArr, mvSnProg = -1) {
     con.fillStyle = color;
     let len = partQ.length;
     if (mvSnProg == 2 && !this._aniAteFruit) len--;
@@ -480,7 +561,7 @@ class GameDrawer {
           off = [(nx - x) * mvSnProg, (ny - y) * mvSnProg];
         } else off = [0, 0];
       }
-      const [ox, oy, drawAt] = this._getAllOffsets(state, x, y, off);
+      const [ox, oy, drawAt] = this._getAllOffsets(state, x, y, off, borderArr);
       for (let k=0; k<drawAt.length; k++) {
         const [bx, by] = bCoord(ox + drawAt[k][0], oy + drawAt[k][1]);
         con.fillRect(bx - bSize / 2, by - bSize / 2, bSize, bSize);
@@ -507,12 +588,14 @@ class GameDrawer {
    * @param {Queue} partQ a queue with the parts of the block
    * @param {string} color the color of the block
    * @param {number[]} offset the offset the block should be moved by
+   * @param {number[][]} borderArr an array that will be modified to reflect whether a block is close
+   * to the game board border
    */
-  drawBlock(state, con, bSize, bCoord, partQ, color, offset) {
+  drawBlock(state, con, bSize, bCoord, partQ, color, offset, borderArr) {
     con.fillStyle = color;
     for (let i=0; i<partQ.length; i++) {
       const [x, y] = partQ.get(i);
-      const [ox, oy, drawAt] = this._getAllOffsets(state, x, y, offset);
+      const [ox, oy, drawAt] = this._getAllOffsets(state, x, y, offset, borderArr);
       for (let k=0; k<drawAt.length; k++) {
         const [bx, by] = bCoord(ox + drawAt[k][0], oy + drawAt[k][1]);
         con.fillRect(bx - bSize / 2, by - bSize / 2, bSize, bSize);
@@ -528,8 +611,10 @@ class GameDrawer {
    * @param {number} x the x coordinate of the cell in the game state array
    * @param {number} y the y coordinate of the cell in the game state array
    * @param {number[]} off the offset the part of the object should be moved by
+   * @param {number[][]} borderArr an array that will be modified to reflect whether an object is close
+   * to the game board border
    */
-  _getAllOffsets(state, x, y, off) {
+  _getAllOffsets(state, x, y, off, borderArr) {
     let [ox, oy] = [x + off[0], y + off[1]];
     const drawAt = [[0, 0]]; // if the part is at the border of the board, draw it on the other side of
     // the board as well (in case of this._fallThrough) -- this array contains additional offsets to add
@@ -539,6 +624,37 @@ class GameDrawer {
       if (state.width - ox < 1) drawAt.push([-state.width, 0]);
       if (state.height - oy < 1) drawAt.push([0, -state.height]);
       if (state.width - ox < 1 && state.height - oy < 1) drawAt.push([-state.width, -state.height]);
+    }
+    for (let i=0; i<drawAt.length; i++) { // update borderArr
+      const [cx, cy] = [ox + drawAt[i][0], oy + drawAt[i][1]];
+      const lowx = Math.floor(cx); const lowxf = 1 - cx + lowx;
+      const highx = Math.ceil(cx); const highxf = 1 - highx + cx;
+      const lowy = Math.floor(cy); const lowyf = 1 - cy + lowy;
+      const highy = Math.ceil(cy); const highyf = 1 - highy + cy;
+      const setN = (xcoord, ycoord, val) => {
+        borderArr[xcoord][ycoord] += val;
+        borderArr[xcoord][ycoord] = Math.min(1, borderArr[xcoord][ycoord]);
+      };
+      const setX = (xcoord, val) => {
+        if (lowy >= 0) setN(xcoord, lowy, val * lowyf);
+        if (highy < state.height) setN(xcoord, highy, val * highyf);
+      };
+      const setY = (ycoord, val) => {
+        if (lowx >= 0) setN(lowx, ycoord, val * lowxf);
+        if (highx < state.width) setN(highx, ycoord, val * highxf);
+      };
+      const distArr = [Math.abs(cx + 0.5), Math.abs(cy + 0.5),
+        Math.abs(state.width - 0.5 - cx), Math.abs(state.height - 0.5 - cy)]; // left, top, right, bottom
+      const valArr = [];
+      for (let i=0; i<distArr.length; i++) {
+        if (distArr[i] <= 0.5) valArr.push(1);
+        else if (distArr[i] <= 1.5) valArr.push(1.5 - distArr[i]);
+        else valArr.push(0);
+      }
+      setX(0, valArr[0]);
+      setY(0, valArr[1]);
+      setX(state.width - 1, valArr[2]);
+      setY(state.height - 1, valArr[3]);
     }
     return [ox, oy, drawAt];
   }
