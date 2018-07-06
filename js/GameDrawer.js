@@ -455,7 +455,7 @@ class GameDrawer {
         cStep = Math.floor(timePassed / STEP_LENGTH);
         cStepT = (timePassed - cStep * STEP_LENGTH) / STEP_LENGTH;
         if (this._aniAteFruit) {
-          removedFruitPos = [this._aniArray[1][this._aniSnakeMoveInd][0], this._aniArray[1][this._aniSnakeMoveInd][0]];
+          removedFruitPos = [this._aniArray[1][this._aniSnakeMoveInd][0], this._aniArray[1][this._aniSnakeMoveInd][1]];
         }
         for (let i=0; i<this._aniArray[cStep].length; i++) {
           const isSnake = i < snakeOffsets.length; const ib = isSnake ? i : i - snakeOffsets.length;
