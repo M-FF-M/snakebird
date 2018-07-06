@@ -4,7 +4,7 @@
  * (if there's enough space on the rest of the board)
  * @type {boolean}
  */
-let ALLOW_MOVING_WITHOUT_SPACE = true;
+let ALLOW_MOVING_WITHOUT_SPACE = false;
 /**
  * Indicates movement to the left
  * @type {number[]}
@@ -225,6 +225,8 @@ function gameTransition(gameState, snake, direction, fallThrough = false, gravit
       }
       const res = move(gameState, new Map(), snakesStatic, blocksStatic, direction, gravity, fallThrough, val2);
       if (res[0] == ALL_STATIC) return null;
+      if (gameState.getVal(nx, ny, fallThrough ? WRAP_AROUND : BLOCK_LEFT_RIGHT(gravity)) > 0) 
+        return null; // new position is still blocked
       if (res[0] == ENDLESS_LOOP) throw new Error('There can\'t be an endless loop after the first move');
       if (res[0] == GAME_WON) throw new Error('The game can\'t have been won after one move when the first move was to move other objects');
       retArr.push(res[1]);

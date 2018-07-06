@@ -15,13 +15,27 @@ const MARGIN = 20;
  * Specifies the color of a snake with a given character
  * @type {object}
  */
-const COLOR_MAP = {
-  A: 'rgba(233, 30, 99, 1)', B: 'rgba(33, 150, 243, 1)', C: 'rgba(156, 39, 176, 1)',
+const COLOR_MAP = { // R, G, B colors are the as in the the real game
+  A: 'rgba(233, 30, 99, 1)', B: 'rgba(0, 75, 244, 1)', C: 'rgba(156, 39, 176, 1)',
   D: 'rgba(103, 58, 183, 1)', E: 'rgba(63, 81, 181, 1)', F: 'rgba(3, 169, 244, 1)',
-  G: 'rgba(57, 193, 11, 1)', H: 'rgba(0, 150, 136, 1)', I: 'rgba(76, 175, 80, 1)',
+  G: 'rgba(24, 210, 37, 1)', H: 'rgba(0, 150, 136, 1)', I: 'rgba(76, 175, 80, 1)',
   J: 'rgba(0, 188, 212, 1)', K: 'rgba(139, 195, 74, 1)', L: 'rgba(205, 220, 57, 1)',
   M: 'rgba(255, 235, 59, 1)', N: 'rgba(255, 193, 7, 1)', O: 'rgba(255, 152, 0, 1)',
-  P: 'rgba(255, 87, 34, 1)', Q: 'rgba(121, 85, 72, 1)', R: 'rgba(244, 67, 54, 1)',
+  P: 'rgba(255, 87, 34, 1)', Q: 'rgba(121, 85, 72, 1)', R: 'rgba(253, 12, 13, 1)',
+  S: 'rgba(102, 0, 51, 1)', T: 'rgba(0, 51, 102, 1)', U: 'rgba(102, 153, 0, 1)'
+};
+
+/**
+ * Specifies the color of a block with a given character
+ * @type {object}
+ */
+const BLOCK_COLOR_MAP = { // A, B, C, D, E colors are the same as in the real game
+  A: 'rgba(219, 215, 49, 1)', B: 'rgba(219, 190, 45, 1)', C: 'rgba(220, 159, 45, 1)',
+  D: 'rgba(222, 121, 44, 1)', E: 'rgba(175, 222, 252, 1)', F: 'rgba(3, 169, 244, 1)',
+  G: 'rgba(24, 210, 37, 1)', H: 'rgba(0, 150, 136, 1)', I: 'rgba(76, 175, 80, 1)',
+  J: 'rgba(0, 188, 212, 1)', K: 'rgba(139, 195, 74, 1)', L: 'rgba(205, 220, 57, 1)',
+  M: 'rgba(255, 235, 59, 1)', N: 'rgba(255, 193, 7, 1)', O: 'rgba(255, 152, 0, 1)',
+  P: 'rgba(255, 87, 34, 1)', Q: 'rgba(121, 85, 72, 1)', R: 'rgba(253, 12, 13, 1)',
   S: 'rgba(102, 0, 51, 1)', T: 'rgba(0, 51, 102, 1)', U: 'rgba(102, 153, 0, 1)'
 };
 
@@ -508,7 +522,7 @@ class GameDrawer {
     for (let i=0; i<blocks.length; i++) {
       if (drawBlock[i]) {
         this.drawBlock(state, con, bSize, bCoord, blocks[i],
-          COLOR_MAP[state.blockToCharacter[i].toUpperCase()], blockOffsets[i], borderArr);
+          BLOCK_COLOR_MAP[state.blockToCharacter[i].toUpperCase()], blockOffsets[i], borderArr);
       }
     }
 

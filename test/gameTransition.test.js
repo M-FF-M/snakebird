@@ -98,6 +98,9 @@ function gameTransitionTest() {
     }
   }
 
+  const orig = ALLOW_MOVING_WITHOUT_SPACE;
+
+  ALLOW_MOVING_WITHOUT_SPACE = true;
   state = new GameState(specialBlockingMoveSamples[0]);
   result = gameTransition(state, 'R', LEFT);
   state = result[3];
@@ -108,8 +111,8 @@ function gameTransitionTest() {
   ALLOW_MOVING_WITHOUT_SPACE = false;
   result = gameTransition(state, 'R', LEFT);
   assertStrictEqual(result, null);
-  ALLOW_MOVING_WITHOUT_SPACE = true;
 
+  ALLOW_MOVING_WITHOUT_SPACE = true;
   state = new GameState(specialBlockingMoveSamples[1]);
   result = gameTransition(state, 'R', RIGHT);
   assertStrictEqual(result, null);
@@ -117,8 +120,8 @@ function gameTransitionTest() {
   ALLOW_MOVING_WITHOUT_SPACE = false;
   result = gameTransition(state, 'R', RIGHT);
   assertStrictEqual(result, null);
-  ALLOW_MOVING_WITHOUT_SPACE = true;
 
+  ALLOW_MOVING_WITHOUT_SPACE = true;
   state = new GameState(specialBlockingMoveSamples[2]);
   result = gameTransition(state, 'R', RIGHT);
   state = result[3];
@@ -129,7 +132,8 @@ function gameTransitionTest() {
   ALLOW_MOVING_WITHOUT_SPACE = false;
   result = gameTransition(state, 'R', RIGHT);
   assertStrictEqual(result, null);
-  ALLOW_MOVING_WITHOUT_SPACE = true;
+
+  ALLOW_MOVING_WITHOUT_SPACE = orig;
 
   /*moves = [
     [['R', RIGHT], ['R', RIGHT], ['R', DOWN], ['R', RIGHT], ['R', RIGHT]],
