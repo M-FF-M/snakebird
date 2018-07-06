@@ -46,7 +46,7 @@ class GameBoard {
     this._redoButtonPos = [];
     this._undoHover = false;
     this._redoHover = false;
-    this._stateStack = [gameState.toString()];
+    this._stateStack = [gameState.clone()];
     this._stateStackIdx = 0;
     this._fallThrough = fallThrough;
     this._state = gameState;
@@ -238,7 +238,7 @@ class GameBoard {
    */
   restart() {
     this._stateStackIdx = 0;
-    this._state = new GameState(this._stateStack[this._stateStackIdx]);
+    this._state = this._stateStack[this._stateStackIdx].clone();
     this._drawer.setState(this._state);
     this.extraMoveCounter += this.moveCounter;
     this.moveCounter = 0;
@@ -251,7 +251,7 @@ class GameBoard {
   undo() {
     if (this._stateStackIdx > 0) {
       this._stateStackIdx--;
-      this._state = new GameState(this._stateStack[this._stateStackIdx]);
+      this._state = this._stateStack[this._stateStackIdx].clone();
       this._drawer.setState(this._state);
       this.moveCounter--;
       this.extraMoveCounter++;
@@ -265,7 +265,7 @@ class GameBoard {
   redo() {
     if (this._stateStackIdx < this._stateStack.length - 1) {
       this._stateStackIdx++;
-      this._state = new GameState(this._stateStack[this._stateStackIdx]);
+      this._state = this._stateStack[this._stateStackIdx].clone();
       this._drawer.setState(this._state);
       this.moveCounter++;
       this.extraMoveCounter--;
@@ -362,7 +362,7 @@ class GameBoard {
     if (check && oldState !== this._state.toString()) {
       while (this._stateStackIdx != this._stateStack.length - 1) this._stateStack.pop();
       this._stateStackIdx++;
-      this._stateStack.push( this._state.toString() );
+      this._stateStack.push( this._state.clone() );
       this.moveCounter++;
       this.drawInfoLine();
     }

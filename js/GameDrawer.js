@@ -423,12 +423,23 @@ class GameDrawer {
     let state = this._state;
     const [w, h, ax, ay, bSize, bCoord] = this.getDimVars();
 
+    let removedFruitPos = [-1, -1];
     let globalTime = ((new Date()).getTime() % 3000) / 3000;
     let globalSlowTime = ((new Date()).getTime() % 10000) / 10000;
     if (this._noCyclicAni) globalTime = globalSlowTime = 0;
 
-    const snakeOffsets = []; for (let i=0; i<state.snakes.length; i++) snakeOffsets.push([0, 0]);
-    const blockOffsets = []; for (let i=0; i<state.blocks.length; i++) blockOffsets.push([0, 0]);
+    const drawSnake = [];
+    const snakeOffsets = [];
+    for (let i=0; i<state.snakes.length; i++) {
+      drawSnake[i] = true;
+      snakeOffsets.push([0, 0]);
+    }
+    const drawBlock = [];
+    const blockOffsets = [];
+    for (let i=0; i<state.blocks.length; i++) {
+      drawBlock[i] = true;
+      blockOffsets.push([0, 0]);
+    }
     let cStep, cStepT;
     if (this._animationRunning) {
       const timePassed = (new Date()).getTime() - this._aniStartTime;
@@ -443,11 +454,18 @@ class GameDrawer {
         const [snakes, blocks] = [this._snakeQueues, this._blockQueues];
         cStep = Math.floor(timePassed / STEP_LENGTH);
         cStepT = (timePassed - cStep * STEP_LENGTH) / STEP_LENGTH;
+        if (this._aniAteFruit) {
+          removedFruitPos = [this._aniArray[1][this._aniSnakeMoveInd][0], this._aniArray[1][this._aniSnakeMoveInd][0]];
+        }
         for (let i=0; i<this._aniArray[cStep].length; i++) {
           const isSnake = i < snakeOffsets.length; const ib = isSnake ? i : i - snakeOffsets.length;
           const initialPos = isSnake ? snakes[ib].getFront() : blocks[ib].getFront();
           const lastPos = this._aniArray[cStep][i];
           let nextPos = this._aniArray[cStep + 1][i];
+          if (nextPos[0] < -10 && nextPos[1] < -10) {
+            if (isSnake) drawSnake[ib] = false;
+            else drawBlock[ib] = false;
+          }
           if (this._fallThrough && lastPos.length != 6 && lastPos.length != 7) {
             nextPos = this._checkPosChange(lastPos, nextPos);
           }
@@ -461,11 +479,15 @@ class GameDrawer {
 
     const [snakes, blocks] = [this._snakeQueues, this._blockQueues];
 
-    let fruitProg = this._state.fruits;
+    let fruitProg = this._state.fruits; let removedFruitProg = 1;
     if (this._animationRunning && this._aniAteFruit && cStep == 0) {
       fruitProg -= cStepT;
+      removedFruitProg -= cStepT;
+    } else if (this._animationRunning && this._aniAteFruit) {
+      fruitProg--; removedFruitProg = 0;
     }
-    this.drawBoardBack(state, con, bSize, bCoord, globalTime, globalSlowTime, fruitProg);
+    this.drawBoardBack(state, con, bSize, bCoord, globalTime, globalSlowTime, fruitProg,
+      removedFruitPos, removedFruitProg);
 
     const borderArr = [];
     for (let i=0; i<this._state.width; i++) {
@@ -474,16 +496,20 @@ class GameDrawer {
         borderArr[i][k] = 0;
     }
     for (let i=0; i<snakes.length; i++) {
-      if (this._animationRunning && i == this._aniSnakeMoveInd)
-        this.drawSnake(state, con, bSize, bCoord, snakes[i], COLOR_MAP[state.snakeToCharacter[i]],
-          snakeOffsets[i], borderArr, cStep == 0 ? cStepT : 2);
-      else
-        this.drawSnake(state, con, bSize, bCoord, snakes[i], COLOR_MAP[state.snakeToCharacter[i]],
-          snakeOffsets[i], borderArr);
+      if (drawSnake[i]) {
+        if (this._animationRunning && i == this._aniSnakeMoveInd)
+          this.drawSnake(state, con, bSize, bCoord, snakes[i], COLOR_MAP[state.snakeToCharacter[i]],
+            snakeOffsets[i], borderArr, cStep == 0 ? cStepT : 2);
+        else
+          this.drawSnake(state, con, bSize, bCoord, snakes[i], COLOR_MAP[state.snakeToCharacter[i]],
+            snakeOffsets[i], borderArr);
+      }
     }
     for (let i=0; i<blocks.length; i++) {
-      this.drawBlock(state, con, bSize, bCoord, blocks[i],
-        COLOR_MAP[state.blockToCharacter[i].toUpperCase()], blockOffsets[i], borderArr);
+      if (drawBlock[i]) {
+        this.drawBlock(state, con, bSize, bCoord, blocks[i],
+          COLOR_MAP[state.blockToCharacter[i].toUpperCase()], blockOffsets[i], borderArr);
+      }
     }
 
     this.drawBoardFront(state, con, bSize, bCoord, globalTime, globalSlowTime);
@@ -705,8 +731,11 @@ class GameDrawer {
    * @param {number} globalTime a number between 0 and 1 that is used for cyclic animations (3s cycle)
    * @param {number} globalSlowTime a number between 0 and 1 that is used for cyclic animations (10s cycle)
    * @param {number} fruitProg a number indicating how many fruits are present on the board
+   * @param {number[]} removedFruitPos an array indicating the position of the fruit that was removed
+   * @param {number} removedFruitProg a number indicating how the removed fruit should be scaled
    */
-  drawBoardBack(state, con, bSize, bCoord, globalTime, globalSlowTime, fruitProg) {
+  drawBoardBack(state, con, bSize, bCoord, globalTime, globalSlowTime, fruitProg,
+      removedFruitPos, removedFruitProg) {
     for (let i=0; i<this._state.portalPos.length; i++) {
       const [px, py] = bCoord(this._state.portalPos[i][0], this._state.portalPos[i][1]);
       drawPortalBack(con, px, py, bSize, globalTime);
@@ -748,7 +777,9 @@ class GameDrawer {
           else if (ffx == 0 && ffy == 2) startidx = 3;
           else if (ffx == 1 && ffy == 2) startidx = 5;
           type += startidx;
-          drawFruit(con, bx, by, bSize, globalTime, type);
+          let sc = 1;
+          if (sx == removedFruitPos[0] && sy == removedFruitPos[1]) sc = removedFruitProg;
+          drawFruit(con, bx, by, bSize, globalTime, type, sc);
         } else if (val == PORTAL) { // half in front, half in back
           // portal position is taken from game state
         } else if (val == TARGET) {

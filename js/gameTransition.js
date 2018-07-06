@@ -388,12 +388,21 @@ function move(gameState, alreadySeen, snakesStatic, blocksStatic, dir = DOWN, gr
   // graph representing the falling snakes and blocks
   const g = new Graph(snakesStatic.length + blocksStatic.length);
 
+  // whether a snakes head was on the target (and there were no more fruits to eat)
+  let snakeWasOnTarget = false; let snTargetInd = -1;
+
   // build graph
   for (let i=0; i<gameState.snakes.length + gameState.blocks.length; i++) {
     let ib = i, cSnake = true;
     if (i >= gameState.snakes.length) {
       ib -= gameState.snakes.length;
       cSnake = false;
+    }
+    if (cSnake && gameState.snakes[ib].getFront()[0] == gameState.target[0]
+        && gameState.snakes[ib].getFront()[1] == gameState.target[1] && gameState.fruits == 0) {
+      // snake's head already was on target and there are no fruits left
+      snakeWasOnTarget = true;
+      snTargetInd = ib;
     }
     if (cSnake && snakesStatic[ib] || !cSnake && blocksStatic[ib]) continue; // object is already static
     const cs = cSnake ? gameState.snakes[ib] : gameState.blocks[ib]; // body part queue
@@ -496,7 +505,17 @@ function move(gameState, alreadySeen, snakesStatic, blocksStatic, dir = DOWN, gr
       }
     }
 
-    if (isNowStatic) { // object cannot fall anymore
+    if (snakeWasOnTarget) { // don't move any other object -- this snake has to be removed first
+      for (let k=0; k<nMap.get(topSort[i]).length; k++) {
+        const [isSnake, idx] = revertToSnakeOrBlock(nMap.get(topSort[i])[k]);
+        const origIdx = nMap.get(topSort[i])[k];
+        const cs = isSnake ? gameState.snakes[idx] : gameState.blocks[idx]; // body part queue
+        const pos = cs.getFront();
+        retArr[origIdx] = [pos[0], pos[1]]; // save new (old) position
+        if (isSnake) snakesStatic[idx] = false; // set all objects in this node to not static
+        else blocksStatic[idx] = false;
+      }
+    } else if (isNowStatic) { // object cannot fall anymore
       for (let k=0; k<nMap.get(topSort[i]).length; k++) {
         const [isSnake, idx] = revertToSnakeOrBlock(nMap.get(topSort[i])[k]);
         if (isSnake) snakesStatic[idx] = true; // set all objects in this node to static
@@ -550,7 +569,7 @@ function move(gameState, alreadySeen, snakesStatic, blocksStatic, dir = DOWN, gr
             if (!isSnake) throw new Error('Block fell into spike. That shouldn\'t be possible!');
             if (q == 0) retArr[origIdx] = [pos[0], pos[1]]; // save new position
             deleteAgain = true; // snake fell onto spike
-            deadArr.push(idx); snakesStatic[idx] = true; fellOffBoardOnSpike = true;
+            deadArr.push(idx); fellOffBoardOnSpike = true;
             break;
           }
           if (gameState.target[0] == pos[0] && gameState.target[1] == pos[1] && isSnake && q == 0
@@ -596,6 +615,14 @@ function move(gameState, alreadySeen, snakesStatic, blocksStatic, dir = DOWN, gr
         }
       }
     }
+  }
+
+  // a snake was on the target and isn't on the board anymore -- this might allow other objects to fall
+  if (snakeWasOnTarget) {
+    allStatic = false;
+    fellOnTarget = true;
+    targetInds.push(snTargetInd);
+    deleteObject(gameState, gameState.snakes[snTargetInd]);
   }
 
   // move objects that touch a portal
