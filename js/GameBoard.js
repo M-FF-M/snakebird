@@ -333,16 +333,16 @@ class GameBoard {
     const oldState = this._state.toString(); let check = false;
     if (key === 'a' || key === 'arrowleft') {
       event.preventDefault();
-      this._state = this._drawer.tryMove(this._activeSnake, LEFT); check = true;
+      this._state = this._drawer.tryMove(this._activeSnake, LEFT) || this._state; check = true;
     } else if (key === 'd' || key === 'arrowright') {
       event.preventDefault();
-      this._state = this._drawer.tryMove(this._activeSnake, RIGHT); check = true;
+      this._state = this._drawer.tryMove(this._activeSnake, RIGHT) || this._state; check = true;
     } else if (key === 'w' || key === 'arrowup') {
       event.preventDefault();
-      this._state = this._drawer.tryMove(this._activeSnake, UP); check = true;
+      this._state = this._drawer.tryMove(this._activeSnake, UP) || this._state; check = true;
     } else if (key === 's' || key === 'arrowdown') {
       event.preventDefault();
-      this._state = this._drawer.tryMove(this._activeSnake, DOWN); check = true;
+      this._state = this._drawer.tryMove(this._activeSnake, DOWN) || this._state; check = true;
     } else if (key === 'z' && event.ctrlKey) {
       event.preventDefault();
       this.undo();

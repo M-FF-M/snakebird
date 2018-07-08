@@ -64,3 +64,46 @@ function drawHiddenCanvas(con, idx = 0, zoom) {
 function transparentize(color, opacity) {
   return color.replace(/, \d+(\.\d+)?\)/, `, ${opacity})`);
 }
+
+/**
+ * Mix two colors
+ * @param {string} colorA the first color
+ * @param {string} colorB the second color
+ * @param {number} [fac] a number between 0 and 1 indicating how much of the first color should be present
+ * in the mix
+ * @param {boolean} [ignoreOpacity] if set to true, the resulting color will have the opacity of colorA,
+ * regardless of the opacity of colorB
+ * @return {string} the mixed color
+ */
+function mix(colorA, colorB, fac = 0.5, ignoreOpacity = false) {
+  let cA = /^rgba\((\d+), ?(\d+), ?(\d+), ?(\d+(?:\.\d+)?)\)$/.exec(colorA).slice(1);
+  let cB = /^rgba\((\d+), ?(\d+), ?(\d+), ?(\d+(?:\.\d+)?)\)$/.exec(colorB).slice(1);
+  cA = cA.map(val => parseFloat(val));
+  cB = cB.map(val => parseFloat(val));
+  const res = [];
+  for (let i=0; i<4; i++) {
+    res[i] = fac * cA[i] + (1 - fac) * cB[i];
+    if (i < 3) res[i] = Math.round(res[i]);
+  }
+  return `rgba(${res[0]}, ${res[1]}, ${res[2]}, ${ignoreOpacity ? cA[3] : res[3]})`;
+}
+
+/**
+ * Darken a color
+ * @param {string} color the color to darken
+ * @param {number} [amount] the amount to darken the color by (0 = don't darken, 1 = convert to black)
+ * @return {string} the darkened color
+ */
+function darken(color, amount = 0.5) {
+  return mix(color, 'rgba(0, 0, 0, 1)', (1 - amount), true);
+}
+
+/**
+ * Make a color lighter
+ * @param {string} color the color to make lighter
+ * @param {number} [amount] the amount to lighten the color by (0 = don't lighten, 1 = convert to white)
+ * @return {string} the lightened color
+ */
+function lighten(color, amount = 0.5) {
+  return mix(color, 'rgba(255, 255, 255, 1)', (1 - amount), true);
+}

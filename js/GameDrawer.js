@@ -109,6 +109,8 @@ class GameDrawer {
     this._centerCoords = [0.5, 0.5];
     this._fallThrough = fallThrough;
     this._currentGravity = DOWN;
+    this._blockInfoMap = new Map();
+    this._calcBlockInfoArr();
     this._clickListeners = [];
     this._absoluteClickListeners = [];
     this._mouseMoveListeners = [];
@@ -119,6 +121,13 @@ class GameDrawer {
     this._canvas.addEventListener('mousemove', this.mouseMove);
     this._canvas.addEventListener('mouseleave', this.mouseLeave);
     this.draw();
+  }
+
+  _calcBlockInfoArr() {
+    this._blockInfoMap = new Map();
+    for (let i=0; i<this._blockQueues.length; i++) {
+      this._blockInfoMap.set(this._state.blockToCharacter[i], calculateGraphicsInfo(this._blockQueues[i]));
+    }
   }
 
   _calcFruitPortalTargetArr() {
@@ -140,7 +149,7 @@ class GameDrawer {
    * @param {string} snake the character corresponding to the snake that should be moved
    * @param {number[]} direction the direction of the movement (LEFT, RIGHT, UP or DOWN)
    * @param {number[]} gravity the direction of gravity (LEFT, RIGHT, UP or DOWN)
-   * @return {GameState} the new game state (or the old one if the move was invalid)
+   * @return {GameState} the new game state (or null if the move was invalid)
    */
   tryMove(snake, direction, gravity = DOWN) {
     this._currentGravity = gravity;
@@ -163,7 +172,7 @@ class GameDrawer {
         return this._newState;
       }
     }
-    return this._state;
+    return null;
   }
 
   /**
@@ -178,6 +187,7 @@ class GameDrawer {
     const stClone = this._state.clone();
     this._snakeQueues = stClone.snakes;
     this._blockQueues = stClone.blocks;
+    this._calcBlockInfoArr();
     this._calcFruitPortalTargetArr();
     this._checkZoomAndCenter();
     this.draw();
@@ -500,14 +510,28 @@ class GameDrawer {
     } else if (this._animationRunning && this._aniAteFruit) {
       fruitProg--; removedFruitProg = 0;
     }
-    this.drawBoardBack(state, con, bSize, bCoord, globalTime, globalSlowTime, fruitProg,
-      removedFruitPos, removedFruitProg);
 
     const borderArr = [];
     for (let i=0; i<this._state.width; i++) {
       borderArr[i] = [];
       for (let k=0; k<this._state.height; k++)
         borderArr[i][k] = 0;
+    }
+    for (let i=0; i<blocks.length; i++) {
+      if (drawBlock[i]) {
+        drawBlockBack(state, con, bSize, bCoord, blocks[i],
+          BLOCK_COLOR_MAP[state.blockToCharacter[i].toUpperCase()], blockOffsets[i], borderArr, this,
+          this._blockInfoMap.get(state.blockToCharacter[i]));
+      }
+    }
+    this.drawBoardBack(state, con, bSize, bCoord, globalTime, globalSlowTime, fruitProg,
+      removedFruitPos, removedFruitProg);
+    for (let i=0; i<blocks.length; i++) {
+      if (drawBlock[i]) {
+        drawBlockFront(state, con, bSize, bCoord, blocks[i],
+          BLOCK_COLOR_MAP[state.blockToCharacter[i].toUpperCase()], blockOffsets[i], borderArr, this,
+          this._blockInfoMap.get(state.blockToCharacter[i]));
+      }
     }
     for (let i=0; i<snakes.length; i++) {
       if (drawSnake[i]) {
@@ -517,12 +541,6 @@ class GameDrawer {
         else
           this.drawSnake(state, con, bSize, bCoord, snakes[i], COLOR_MAP[state.snakeToCharacter[i]],
             snakeOffsets[i], borderArr);
-      }
-    }
-    for (let i=0; i<blocks.length; i++) {
-      if (drawBlock[i]) {
-        this.drawBlock(state, con, bSize, bCoord, blocks[i],
-          BLOCK_COLOR_MAP[state.blockToCharacter[i].toUpperCase()], blockOffsets[i], borderArr);
       }
     }
 
@@ -853,32 +871,6 @@ class GameDrawer {
   }
 
   /**
-   * Draw a single block
-   * @param {GameState} state the (old) game state
-   * @param {CanvasRenderingContext2D} con the context of the canvas
-   * @param {number} bSize the size of a single grid cell
-   * @param {Function} bCoord a function that takes the x and y coordinates of a grid cell in the game
-   * state array as parameters and returns an array with the corresponding x and y coordinates of the
-   * center of the grid cell on the canvas
-   * @param {Queue} partQ a queue with the parts of the block
-   * @param {string} color the color of the block
-   * @param {number[]} offset the offset the block should be moved by
-   * @param {number[][]} borderArr an array that will be modified to reflect whether a block is close
-   * to the game board border
-   */
-  drawBlock(state, con, bSize, bCoord, partQ, color, offset, borderArr) {
-    con.fillStyle = color;
-    for (let i=0; i<partQ.length; i++) {
-      const [x, y] = partQ.get(i);
-      const [ox, oy, drawAt] = this._getAllOffsets(state, x, y, offset, borderArr);
-      for (let k=0; k<drawAt.length; k++) {
-        const [bx, by] = bCoord(ox + drawAt[k][0], oy + drawAt[k][1]);
-        con.fillRect(bx - bSize / 2, by - bSize / 2, bSize, bSize);
-      }
-    }
-  }
-
-  /**
    * Get all offsets a single cell of a snake or a block should be drawn on. This is necessary if the
    * fallThrough option is enabled: in this case, parts of objects that overlap the game board border
    * have to be drawn on the other side of the board as well.
@@ -886,8 +878,11 @@ class GameDrawer {
    * @param {number} x the x coordinate of the cell in the game state array
    * @param {number} y the y coordinate of the cell in the game state array
    * @param {number[]} off the offset the part of the object should be moved by
-   * @param {number[][]} borderArr an array that will be modified to reflect whether an object is close
+   * @param {number[][]} [borderArr] an array that will be modified to reflect whether an object is close
    * to the game board border
+   * @return {number[][]} an array [ox, oy, drawAt] where ox, oy represent the actual coordinates to
+   * draw the block / snake at and drawAt contains additional offsets indicating where to draw the snake /
+   * block in addition to ox, oy (the offsets are relative to ox, oy)
    */
   _getAllOffsets(state, x, y, off, borderArr) {
     let [ox, oy] = [x + off[0], y + off[1]];
@@ -900,36 +895,38 @@ class GameDrawer {
       if (state.height - oy < 1) drawAt.push([0, -state.height]);
       if (state.width - ox < 1 && state.height - oy < 1) drawAt.push([-state.width, -state.height]);
     }
-    for (let i=0; i<drawAt.length; i++) { // update borderArr
-      const [cx, cy] = [ox + drawAt[i][0], oy + drawAt[i][1]];
-      const lowx = Math.floor(cx); const lowxf = 1 - cx + lowx;
-      const highx = Math.ceil(cx); const highxf = 1 - highx + cx;
-      const lowy = Math.floor(cy); const lowyf = 1 - cy + lowy;
-      const highy = Math.ceil(cy); const highyf = 1 - highy + cy;
-      const setN = (xcoord, ycoord, val) => {
-        borderArr[xcoord][ycoord] += val;
-        borderArr[xcoord][ycoord] = Math.min(1, borderArr[xcoord][ycoord]);
-      };
-      const setX = (xcoord, val) => {
-        if (lowy >= 0) setN(xcoord, lowy, val * lowyf);
-        if (highy < state.height) setN(xcoord, highy, val * highyf);
-      };
-      const setY = (ycoord, val) => {
-        if (lowx >= 0) setN(lowx, ycoord, val * lowxf);
-        if (highx < state.width) setN(highx, ycoord, val * highxf);
-      };
-      const distArr = [Math.abs(cx + 0.5), Math.abs(cy + 0.5),
-        Math.abs(state.width - 0.5 - cx), Math.abs(state.height - 0.5 - cy)]; // left, top, right, bottom
-      const valArr = [];
-      for (let i=0; i<distArr.length; i++) {
-        if (distArr[i] <= 0.5) valArr.push(1);
-        else if (distArr[i] <= 1.5) valArr.push(1.5 - distArr[i]);
-        else valArr.push(0);
+    if (borderArr) { // if a border array was passed
+      for (let i=0; i<drawAt.length; i++) { // update borderArr
+        const [cx, cy] = [ox + drawAt[i][0], oy + drawAt[i][1]];
+        const lowx = Math.floor(cx); const lowxf = 1 - cx + lowx;
+        const highx = Math.ceil(cx); const highxf = 1 - highx + cx;
+        const lowy = Math.floor(cy); const lowyf = 1 - cy + lowy;
+        const highy = Math.ceil(cy); const highyf = 1 - highy + cy;
+        const setN = (xcoord, ycoord, val) => {
+          borderArr[xcoord][ycoord] += val;
+          borderArr[xcoord][ycoord] = Math.min(1, borderArr[xcoord][ycoord]);
+        };
+        const setX = (xcoord, val) => {
+          if (lowy >= 0) setN(xcoord, lowy, val * lowyf);
+          if (highy < state.height) setN(xcoord, highy, val * highyf);
+        };
+        const setY = (ycoord, val) => {
+          if (lowx >= 0) setN(lowx, ycoord, val * lowxf);
+          if (highx < state.width) setN(highx, ycoord, val * highxf);
+        };
+        const distArr = [Math.abs(cx + 0.5), Math.abs(cy + 0.5),
+          Math.abs(state.width - 0.5 - cx), Math.abs(state.height - 0.5 - cy)]; // left, top, right, bottom
+        const valArr = [];
+        for (let i=0; i<distArr.length; i++) {
+          if (distArr[i] <= 0.5) valArr.push(1);
+          else if (distArr[i] <= 1.5) valArr.push(1.5 - distArr[i]);
+          else valArr.push(0);
+        }
+        setX(0, valArr[0]);
+        setY(0, valArr[1]);
+        setX(state.width - 1, valArr[2]);
+        setY(state.height - 1, valArr[3]);
       }
-      setX(0, valArr[0]);
-      setY(0, valArr[1]);
-      setX(state.width - 1, valArr[2]);
-      setY(state.height - 1, valArr[3]);
     }
     return [ox, oy, drawAt];
   }

@@ -29,6 +29,8 @@
   <script language="javascript" type="text/javascript" src="js/graphics/target.js"></script>
   <script language="javascript" type="text/javascript" src="js/graphics/portal.js"></script>
   <script language="javascript" type="text/javascript" src="js/graphics/fruit.js"></script>
+  <script language="javascript" type="text/javascript" src="js/graphics/block-utils.js"></script>
+  <script language="javascript" type="text/javascript" src="js/graphics/block.js"></script>
   <script language="javascript" type="text/javascript" src="js/GameDrawer.js"></script>
   <script language="javascript" type="text/javascript" src="js/GameBoard.js"></script>
   <script language="javascript" type="text/javascript">
@@ -50,7 +52,7 @@
 
     function main() {
       if (!board)
-        board = new GameBoard(document.body, new GameState(levels[26]), false);
+        board = new GameBoard(document.body, new GameState(levels[27]), false);
     }
 
     document.addEventListener('DOMContentLoaded', () => main());
