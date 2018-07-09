@@ -517,6 +517,7 @@ class GameDrawer {
       for (let k=0; k<this._state.height; k++)
         borderArr[i][k] = 0;
     }
+    this.drawBoardBack(state, con, bSize, bCoord, globalTime, globalSlowTime, fruitProg);
     for (let i=0; i<blocks.length; i++) {
       if (drawBlock[i]) {
         drawBlockBack(state, con, bSize, bCoord, blocks[i],
@@ -524,8 +525,6 @@ class GameDrawer {
           this._blockInfoMap.get(state.blockToCharacter[i]));
       }
     }
-    this.drawBoardBack(state, con, bSize, bCoord, globalTime, globalSlowTime, fruitProg,
-      removedFruitPos, removedFruitProg);
     for (let i=0; i<blocks.length; i++) {
       if (drawBlock[i]) {
         drawBlockFront(state, con, bSize, bCoord, blocks[i],
@@ -544,7 +543,7 @@ class GameDrawer {
       }
     }
 
-    this.drawBoardFront(state, con, bSize, bCoord, globalTime, globalSlowTime);
+    this.drawBoardFront(state, con, bSize, bCoord, globalTime, globalSlowTime, removedFruitPos, removedFruitProg);
 
     con.globalCompositeOperation = 'destination-in';
     con.fillStyle = 'rgba(255, 255, 255, 1)';
@@ -694,8 +693,10 @@ class GameDrawer {
    * center of the grid cell on the canvas
    * @param {number} globalTime a number between 0 and 1 that is used for cyclic animations (3s cycle)
    * @param {number} globalSlowTime a number between 0 and 1 that is used for cyclic animations (10s cycle)
+   * @param {number[]} removedFruitPos an array indicating the position of the fruit that was removed
+   * @param {number} removedFruitProg a number indicating how the removed fruit should be scaled
    */
-  drawBoardFront(state, con, bSize, bCoord, globalTime, globalSlowTime) {
+  drawBoardFront(state, con, bSize, bCoord, globalTime, globalSlowTime, removedFruitPos, removedFruitProg) {
     for (let sx=0; sx<state.width; sx++) {
       for (let sy=0; sy<state.height; sy++) {
         const [bx, by] = bCoord(sx, sy);
@@ -714,7 +715,26 @@ class GameDrawer {
         } else if (val == SPIKE) {
           drawSpike(con, bx, by, adjVals, bSize);
         } else if (val == FRUIT) {
-          // fruit is behind moving objects
+          let type = 0;
+          for (let i=0; i<state.fruitPos.length; i++) {
+            if (this._state.fruitPos[i][0] == sx && this._state.fruitPos[i][1] == sy) {
+              type = i;
+              break;
+            }
+          }
+          let startidx = 0; const [ffx, ffy] = [this._state.fruitPos[0][0] % 3, this._state.fruitPos[0][1] % 3];
+          if (ffx == 0 && ffy == 0) startidx = 1;
+          else if (ffx == 1 && ffy == 0) startidx = 2;
+          else if (ffx == 2 && ffy == 0) startidx = 3;
+          else if (ffx == 0 && ffy == 1) startidx = 4;
+          else if (ffx == 1 && ffy == 1) startidx = 5;
+          else if (ffx == 2 && ffy == 1) startidx = 6;
+          else if (ffx == 0 && ffy == 2) startidx = 3;
+          else if (ffx == 1 && ffy == 2) startidx = 5;
+          type += startidx;
+          let sc = 1;
+          if (sx == removedFruitPos[0] && sy == removedFruitPos[1]) sc = removedFruitProg;
+          drawFruit(con, bx, by, bSize, globalTime, type, sc);
         } else if (val == PORTAL) { // half in front, half in back
           // portal position is taken from game state
         } else if (val == TARGET) {
@@ -763,11 +783,8 @@ class GameDrawer {
    * @param {number} globalTime a number between 0 and 1 that is used for cyclic animations (3s cycle)
    * @param {number} globalSlowTime a number between 0 and 1 that is used for cyclic animations (10s cycle)
    * @param {number} fruitProg a number indicating how many fruits are present on the board
-   * @param {number[]} removedFruitPos an array indicating the position of the fruit that was removed
-   * @param {number} removedFruitProg a number indicating how the removed fruit should be scaled
    */
-  drawBoardBack(state, con, bSize, bCoord, globalTime, globalSlowTime, fruitProg,
-      removedFruitPos, removedFruitProg) {
+  drawBoardBack(state, con, bSize, bCoord, globalTime, globalSlowTime, fruitProg) {
     for (let i=0; i<this._state.portalPos.length; i++) {
       const [px, py] = bCoord(this._state.portalPos[i][0], this._state.portalPos[i][1]);
       drawPortalBack(con, px, py, bSize, globalTime);
@@ -792,26 +809,7 @@ class GameDrawer {
         } else if (val == SPIKE) {
           // spikes are in front of objects
         } else if (val == FRUIT) {
-          let type = 0;
-          for (let i=0; i<state.fruitPos.length; i++) {
-            if (this._state.fruitPos[i][0] == sx && this._state.fruitPos[i][1] == sy) {
-              type = i;
-              break;
-            }
-          }
-          let startidx = 0; const [ffx, ffy] = [this._state.fruitPos[0][0] % 3, this._state.fruitPos[0][1] % 3];
-          if (ffx == 0 && ffy == 0) startidx = 1;
-          else if (ffx == 1 && ffy == 0) startidx = 2;
-          else if (ffx == 2 && ffy == 0) startidx = 3;
-          else if (ffx == 0 && ffy == 1) startidx = 4;
-          else if (ffx == 1 && ffy == 1) startidx = 5;
-          else if (ffx == 2 && ffy == 1) startidx = 6;
-          else if (ffx == 0 && ffy == 2) startidx = 3;
-          else if (ffx == 1 && ffy == 2) startidx = 5;
-          type += startidx;
-          let sc = 1;
-          if (sx == removedFruitPos[0] && sy == removedFruitPos[1]) sc = removedFruitProg;
-          drawFruit(con, bx, by, bSize, globalTime, type, sc);
+          // fruits are in front of moving objects
         } else if (val == PORTAL) { // half in front, half in back
           // portal position is taken from game state
         } else if (val == TARGET) {

@@ -343,13 +343,13 @@ class GameBoard {
     } else if (key === 's' || key === 'arrowdown') {
       event.preventDefault();
       this._state = this._drawer.tryMove(this._activeSnake, DOWN) || this._state; check = true;
-    } else if (key === 'z' && event.ctrlKey) {
+    } else if (key === 'z' && (event.ctrlKey || event.shiftKey)) {
       event.preventDefault();
       this.undo();
-    } else if (key === 'y' && event.ctrlKey) {
+    } else if (key === 'y' && (event.ctrlKey || event.shiftKey)) {
       event.preventDefault();
       this.redo();
-    } else if (key === 'r' && event.ctrlKey) {
+    } else if (key === 'r' && (event.ctrlKey || event.shiftKey)) {
       event.preventDefault();
       this.restart();
     } else if (key === '+') {
