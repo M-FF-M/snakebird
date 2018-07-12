@@ -535,11 +535,11 @@ class GameDrawer {
     for (let i=0; i<snakes.length; i++) {
       if (drawSnake[i]) {
         if (this._animationRunning && i == this._aniSnakeMoveInd)
-          this.drawSnake(state, con, bSize, bCoord, snakes[i], COLOR_MAP[state.snakeToCharacter[i]],
-            snakeOffsets[i], borderArr, cStep == 0 ? cStepT : 2);
+          drawSnakebird(this, state, con, this._canvas, bSize, bCoord, snakes[i], COLOR_MAP[state.snakeToCharacter[i]],
+            snakeOffsets[i], borderArr, globalSlowTime, this._applyZoom, cStep == 0 ? cStepT : 2);
         else
-          this.drawSnake(state, con, bSize, bCoord, snakes[i], COLOR_MAP[state.snakeToCharacter[i]],
-            snakeOffsets[i], borderArr);
+          drawSnakebird(this, state, con, this._canvas, bSize, bCoord, snakes[i], COLOR_MAP[state.snakeToCharacter[i]],
+            snakeOffsets[i], borderArr, globalSlowTime, this._applyZoom);
       }
     }
 
@@ -814,55 +814,6 @@ class GameDrawer {
           // portal position is taken from game state
         } else if (val == TARGET) {
           // target position is taken from game state
-        }
-      }
-    }
-  }
-
-  /**
-   * Draw a single snake
-   * @param {GameState} state the (old) game state
-   * @param {CanvasRenderingContext2D} con the context of the canvas
-   * @param {number} bSize the size of a single grid cell
-   * @param {Function} bCoord a function that takes the x and y coordinates of a grid cell in the game
-   * state array as parameters and returns an array with the corresponding x and y coordinates of the
-   * center of the grid cell on the canvas
-   * @param {Queue} partQ a queue with the body parts of the snake
-   * @param {string} color the color of the snake
-   * @param {number[]} offset the offset the snake should be moved by
-   * @param {number[][]} borderArr an array that will be modified to reflect whether a snake is close
-   * to the game board border
-   * @param {number} [mvSnProg] if not -1, either between 0 and 1, specifying the progress of the first
-   * movement of the snake's head or 2, specifying that the snake already moved its head (if it is -1,
-   * this snake only falls but was not actively moved by the player)
-   */
-  drawSnake(state, con, bSize, bCoord, partQ, color, offset, borderArr, mvSnProg = -1) {
-    con.fillStyle = color;
-    let len = partQ.length;
-    if (mvSnProg == 2 && !this._aniAteFruit) len--;
-    for (let i=len-1; i>=0; i--) {
-      const [x, y] = partQ.get(i);
-      let off = offset;
-      if (i != 0 && mvSnProg >= 0 && mvSnProg <= 1) {
-        if (i == len - 1 && !this._aniAteFruit) {
-          let [nx, ny] = partQ.get(i-1);
-          if (this._fallThrough) {
-            [nx, ny] = this._checkPosChange([x, y], [nx, ny]);
-          }
-          off = [(nx - x) * mvSnProg, (ny - y) * mvSnProg];
-        } else off = [0, 0];
-      }
-      const [ox, oy, drawAt] = this._getAllOffsets(state, x, y, off, borderArr);
-      for (let k=0; k<drawAt.length; k++) {
-        const [bx, by] = bCoord(ox + drawAt[k][0], oy + drawAt[k][1]);
-        con.fillRect(bx - bSize / 2, by - bSize / 2, bSize, bSize);
-        if (i == 0) {
-          con.fillStyle = 'rgba(255, 255, 255, 1)';
-          con.beginPath();
-          con.arc(bx, by, bSize / 3, 0, 2 * Math.PI);
-          con.closePath();
-          con.fill();
-          con.fillStyle = color;
         }
       }
     }
