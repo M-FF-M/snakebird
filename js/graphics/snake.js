@@ -28,8 +28,8 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
   if (mvSnProg == 2 && !gd._aniAteFruit) len--;
 
   for (let i=len-1; i>=0; i--) { // draw colored snake
-    const [lastPos, nextPos] = getPosDiff(partQ, i, len);
-    const nextNextPos = i > 0 ? getPosDiff(partQ, i - 1, len)[1] : nextPos;
+    const [lastPos, nextPos] = getPosDiff(partQ, i, len); // 0: left, 1: top, 2: right, 3: bottom
+    const lastLastPos = i < len-1 ? getPosDiff(partQ, i + 1, len)[1] : lastPos;
     if (i % 2 == 0) con2.fillStyle = color;
     else con2.fillStyle = lightColor;
     const [x, y] = partQ.get(i);
@@ -37,7 +37,23 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
     const [ox, oy, drawAt] = gd._getAllOffsets(state, x, y, off);
     for (let k=0; k<drawAt.length; k++) {
       const [bx, by] = bCoord(ox + drawAt[k][0], oy + drawAt[k][1]);
-      con2.fillRect(bx - bSize / 2, by - bSize / 2, bSize, bSize);
+      if (false && mvSnProg >= 0 && mvSnProg <= 1) {
+        
+      } else {
+        con2.beginPath();
+        con2.moveTo(bx - bSize / 2, by - bSize / 2);
+        if (lastPos != 1) con2.lineTo(bx + bSize / 2, by - bSize / 2);
+        else blockEndPath(con2, bx - bSize / 2, by - bSize / 2, bx + bSize / 2, by - bSize / 2);
+        if (lastPos != 2) con2.lineTo(bx + bSize / 2, by + bSize / 2);
+        else blockEndPath(con2, bx + bSize / 2, by - bSize / 2, bx + bSize / 2, by + bSize / 2);
+        if (lastPos != 3) con2.lineTo(bx - bSize / 2, by + bSize / 2);
+        else blockEndPath(con2, bx + bSize / 2, by + bSize / 2, bx - bSize / 2, by + bSize / 2);
+        if (lastPos != 0) con2.lineTo(bx - bSize / 2, by - bSize / 2);
+        else blockEndPath(con2, bx - bSize / 2, by + bSize / 2, bx - bSize / 2, by - bSize / 2);
+        con2.closePath();
+        con2.fill();
+      }
+      // con2.fillRect(bx - bSize / 2, by - bSize / 2, bSize, bSize);
       if (i == 0) {
         con2.fillStyle = 'rgba(255, 255, 255, 1)';
         con2.beginPath();
@@ -54,7 +70,7 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
   con3.fillStyle = 'rgba(255, 255, 255, 1)';
   con3.beginPath();
   for (let i=len-1; i>=0; i--) { // draw snake with rounded corners
-    const [lastPos, nextPos] = getPosDiff(partQ, i, len);
+    const [lastPos, nextPos] = getPosDiff(partQ, i, len); // 0: left, 1: top, 2: right, 3: bottom
     const lA = (lastPos == 0 || nextPos == 0) ? -1 : 0; // left add
     const tA = (lastPos == 1 || nextPos == 1) ? -1 : 0; // top add
     const rA = (lastPos == 2 || nextPos == 2) ? 1 : 0; // right add
@@ -64,11 +80,55 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
     const [ox, oy, drawAt] = gd._getAllOffsets(state, x, y, off, borderArr);
     for (let k=0; k<drawAt.length; k++) {
       const [bx, by] = bCoord(ox + drawAt[k][0], oy + drawAt[k][1]);
-      // con3.beginPath();
-      // con3.moveTo(bx, by - bSize / 2 + tA);
-      // con3.closePath();
-      // con3.fill();
-      con3.fillRect(bx - bSize / 2, by - bSize / 2, bSize, bSize);
+      con3.beginPath();
+      con3.moveTo(bx, by - bSize / 2 + tA);
+      if ((i == 0 && i == len-1)
+          || (mvSnProg >= 0.5 && mvSnProg <= 1 && !gd._aniAteFruit && i == len - 2 && nextPos != 1 && nextPos != 2)
+          || (mvSnProg >= 0.5 && mvSnProg <= 1 && !gd._aniAteFruit && i == len - 1)
+          || (mvSnProg >= 0 && mvSnProg <= 0.5 && i == 1 && lastPos != 1 && lastPos != 2)
+          || (mvSnProg >= 0 && mvSnProg <= 0.5 && i == 0)
+          || (i == len-1 && nextPos != 1 && nextPos != 2)
+          || (i == 0 && lastPos != 1 && lastPos != 2)
+          || (lastPos != 1 && lastPos != 2 && nextPos != 1 && nextPos != 2)) // draw top right rounded corner
+        con3.arc(bx + bSize / 4 + rA, by - bSize / 4 + tA, bSize / 4, 1.5 * Math.PI, 2 * Math.PI);
+      else
+        con3.lineTo(bx + bSize / 2 + rA, by - bSize / 2 + tA);
+      if ((i == 0 && i == len-1)
+          || (mvSnProg >= 0.5 && mvSnProg <= 1 && !gd._aniAteFruit && i == len - 2 && nextPos != 2 && nextPos != 3)
+          || (mvSnProg >= 0.5 && mvSnProg <= 1 && !gd._aniAteFruit && i == len - 1)
+          || (mvSnProg >= 0 && mvSnProg <= 0.5 && i == 1 && lastPos != 2 && lastPos != 3)
+          || (mvSnProg >= 0 && mvSnProg <= 0.5 && i == 0)
+          || (i == len-1 && nextPos != 2 && nextPos != 3)
+          || (i == 0 && lastPos != 2 && lastPos != 3)
+          || (lastPos != 2 && lastPos != 3 && nextPos != 2 && nextPos != 3)) // draw bottom right rounded corner
+        con3.arc(bx + bSize / 4 + rA, by + bSize / 4 + bA, bSize / 4, 0, 0.5 * Math.PI);
+      else
+        con3.lineTo(bx + bSize / 2 + rA, by + bSize / 2 + bA);
+      if ((i == 0 && i == len-1)
+          || (mvSnProg >= 0.5 && mvSnProg <= 1 && !gd._aniAteFruit && i == len - 2 && nextPos != 3 && nextPos != 0)
+          || (mvSnProg >= 0.5 && mvSnProg <= 1 && !gd._aniAteFruit && i == len - 1)
+          || (mvSnProg >= 0 && mvSnProg <= 0.5 && i == 1 && lastPos != 3 && lastPos != 0)
+          || (mvSnProg >= 0 && mvSnProg <= 0.5 && i == 0)
+          || (i == len-1 && nextPos != 3 && nextPos != 0)
+          || (i == 0 && lastPos != 3 && lastPos != 0)
+          || (lastPos != 3 && lastPos != 0 && nextPos != 3 && nextPos != 0)) // draw bottom left rounded corner
+        con3.arc(bx - bSize / 4 + lA, by + bSize / 4 + bA, bSize / 4, 0.5 * Math.PI, 1 * Math.PI);
+      else
+        con3.lineTo(bx - bSize / 2 + lA, by + bSize / 2 + bA);
+      if ((i == 0 && i == len-1)
+          || (mvSnProg >= 0.5 && mvSnProg <= 1 && !gd._aniAteFruit && i == len - 2 && nextPos != 0 && nextPos != 1)
+          || (mvSnProg >= 0.5 && mvSnProg <= 1 && !gd._aniAteFruit && i == len - 1)
+          || (mvSnProg >= 0 && mvSnProg <= 0.5 && i == 1 && lastPos != 0 && lastPos != 1)
+          || (mvSnProg >= 0 && mvSnProg <= 0.5 && i == 0)
+          || (i == len-1 && nextPos != 0 && nextPos != 1)
+          || (i == 0 && lastPos != 0 && lastPos != 1)
+          || (lastPos != 0 && lastPos != 1 && nextPos != 0 && nextPos != 1)) // draw top left rounded corner
+        con3.arc(bx - bSize / 4 + lA, by - bSize / 4 + tA, bSize / 4, 1 * Math.PI, 1.5 * Math.PI);
+      else
+        con3.lineTo(bx - bSize / 2 + lA, by - bSize / 2 + tA);
+      con3.lineTo(bx, by - bSize / 2 + tA);
+      con3.closePath();
+      con3.fill();
     }
   }
   con3.closePath();
@@ -81,6 +141,22 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
   drawHiddenCanvas(con, 0, zoom); // draw snake on main canvas
 
   if (typeof zoom === 'function') con3.restore();
+}
+
+/**
+ * Draw the curved end path of the block
+ * @param {CanvasRenderingContext2D} con the context of the canvas
+ * @param {number} sx the start x coordinate
+ * @param {number} sy the start y coordinate
+ * @param {number} tx the destination x coordinate
+ * @param {number} ty the destination y coordinate
+ * 
+ */
+function blockEndPath(con, sx, sy, tx, ty) {
+  con.lineTo(sx, sy);
+  bezierCurve(con, sx, sy, 0.7 * sx + 0.3 * tx, 0.7 * sy + 0.3 * ty, 0.4 * Math.PI, -0.4 * Math.PI, 0.8, 0.8);
+  bezierCurve(con, 0.7 * sx + 0.3 * tx, 0.7 * sy + 0.3 * ty, 0.3 * sx + 0.7 * tx, 0.3 * sy + 0.7 * ty, 0, 0, 0.7, 0.7);
+  bezierCurve(con, 0.3 * sx + 0.7 * tx, 0.3 * sy + 0.7 * ty, tx, ty, 0.4 * Math.PI, -0.4 * Math.PI, 0.8, 0.8);
 }
 
 /**
