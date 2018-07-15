@@ -169,6 +169,8 @@ function calculateGraphicsInfo(partQ) {
   return {
     blockToArrCoords,
     arrToBlockCoords,
-    info: retArr
+    info: retArr,
+    centroid: [nCentrX, nCentrY],
+    head: origToBlock(partQ.get(0)[0], partQ.get(0)[1])
   };
 }

@@ -452,16 +452,16 @@ class GameDrawer {
     let globalSlowTime = ((new Date()).getTime() % 10000) / 10000;
     if (this._noCyclicAni) globalTime = globalSlowTime = 0;
 
-    const drawSnake = [];
+    const drawSnake = []; const snakeDeathProg = []; const snakePortation = [];
     const snakeOffsets = [];
     for (let i=0; i<state.snakes.length; i++) {
-      drawSnake[i] = true;
+      drawSnake[i] = true; snakeDeathProg[i] = 0; snakePortation[i] = [false];
       snakeOffsets.push([0, 0]);
     }
-    const drawBlock = [];
+    const drawBlock = []; const blockDeathProg = []; const blockPortation = [];
     const blockOffsets = [];
     for (let i=0; i<state.blocks.length; i++) {
-      drawBlock[i] = true;
+      drawBlock[i] = true; blockDeathProg[i] = 0; blockPortation[i] = [false];
       blockOffsets.push([0, 0]);
     }
     let cStep, cStepT;
@@ -486,12 +486,27 @@ class GameDrawer {
           const initialPos = isSnake ? snakes[ib].getFront() : blocks[ib].getFront();
           const lastPos = this._aniArray[cStep][i];
           let nextPos = this._aniArray[cStep + 1][i];
+          if ((nextPos.length == 3 && nextPos[2] == 1) || (this._aniEnd == -1 && cStep == this._aniLength - 1)) {
+            if (isSnake) snakeDeathProg[ib] = cStepT;
+            else blockDeathProg[ib] = cStepT;
+          }
           if (nextPos[0] < -10 && nextPos[1] < -10) {
             if (isSnake) drawSnake[ib] = false;
             else drawBlock[ib] = false;
           }
           if (this._fallThrough && lastPos.length != 6 && lastPos.length != 7) {
             nextPos = this._checkPosChange(lastPos, nextPos);
+          }
+          if (lastPos.length == 6 || lastPos.length == 7) { // portation
+            let oPos = lastPos;
+            if (cStepT > 0.5) oPos = nextPos;
+            if (isSnake) snakePortation[ib] = [true, cStepT, lastPos[0], lastPos[1], lastPos[2], lastPos[3],
+              state.portalPos[lastPos[4]][0], state.portalPos[lastPos[4]][1], state.portalPos[lastPos[5]][0], state.portalPos[lastPos[5]][1]];
+            else blockPortation[ib] = [true, cStepT, lastPos[0], lastPos[1], lastPos[2], lastPos[3],
+              state.portalPos[lastPos[4]][0], state.portalPos[lastPos[4]][1], state.portalPos[lastPos[5]][0], state.portalPos[lastPos[5]][1]];
+            if (isSnake) snakeOffsets[ib] = [oPos[0] - initialPos[0], oPos[1] - initialPos[1]];
+            else blockOffsets[ib] = [oPos[0] - initialPos[0], oPos[1] - initialPos[1]];
+            continue;
           }
           const cPos = [(1 - cStepT) * lastPos[0] + cStepT * nextPos[0],
             (1 - cStepT) * lastPos[1] + cStepT * nextPos[1]];
@@ -522,24 +537,26 @@ class GameDrawer {
       if (drawBlock[i]) {
         drawBlockBack(state, con, bSize, bCoord, blocks[i],
           BLOCK_COLOR_MAP[state.blockToCharacter[i].toUpperCase()], blockOffsets[i], borderArr, this,
-          this._blockInfoMap.get(state.blockToCharacter[i]));
+          this._blockInfoMap.get(state.blockToCharacter[i]), this._fallThrough, blockDeathProg[i], blockPortation[i]);
       }
     }
     for (let i=0; i<blocks.length; i++) {
       if (drawBlock[i]) {
         drawBlockFront(state, con, bSize, bCoord, blocks[i],
           BLOCK_COLOR_MAP[state.blockToCharacter[i].toUpperCase()], blockOffsets[i], borderArr, this,
-          this._blockInfoMap.get(state.blockToCharacter[i]));
+          this._blockInfoMap.get(state.blockToCharacter[i]), this._fallThrough, blockDeathProg[i], blockPortation[i]);
       }
     }
     for (let i=0; i<snakes.length; i++) {
       if (drawSnake[i]) {
         if (this._animationRunning && i == this._aniSnakeMoveInd)
           drawSnakebird(this, state, con, this._canvas, bSize, bCoord, snakes[i], COLOR_MAP[state.snakeToCharacter[i]],
-            snakeOffsets[i], borderArr, globalSlowTime, this._applyZoom, cStep == 0 ? cStepT : 2);
+            snakeOffsets[i], borderArr, globalSlowTime, this._applyZoom, cStep == 0 ? cStepT : 2, this._fallThrough,
+            snakeDeathProg[i], snakePortation[i]);
         else
           drawSnakebird(this, state, con, this._canvas, bSize, bCoord, snakes[i], COLOR_MAP[state.snakeToCharacter[i]],
-            snakeOffsets[i], borderArr, globalSlowTime, this._applyZoom);
+            snakeOffsets[i], borderArr, globalSlowTime, this._applyZoom, -1, this._fallThrough,
+            snakeDeathProg[i], snakePortation[i]);
       }
     }
 
@@ -829,20 +846,28 @@ class GameDrawer {
    * @param {number[]} off the offset the part of the object should be moved by
    * @param {number[][]} [borderArr] an array that will be modified to reflect whether an object is close
    * to the game board border
+   * @param {boolean} [allOffsets] whether just to give all offsets
    * @return {number[][]} an array [ox, oy, drawAt] where ox, oy represent the actual coordinates to
    * draw the block / snake at and drawAt contains additional offsets indicating where to draw the snake /
    * block in addition to ox, oy (the offsets are relative to ox, oy)
    */
-  _getAllOffsets(state, x, y, off, borderArr) {
+  _getAllOffsets(state, x, y, off, borderArr, allOffsets = false) {
     let [ox, oy] = [x + off[0], y + off[1]];
     const drawAt = [[0, 0]]; // if the part is at the border of the board, draw it on the other side of
     // the board as well (in case of this._fallThrough) -- this array contains additional offsets to add
     if (this._fallThrough) {
-      while (ox < 0) ox += state.width; while (oy < 0) oy += state.height;
-      ox %= state.width; oy %= state.height;
-      if (state.width - ox < 1) drawAt.push([-state.width, 0]);
-      if (state.height - oy < 1) drawAt.push([0, -state.height]);
-      if (state.width - ox < 1 && state.height - oy < 1) drawAt.push([-state.width, -state.height]);
+      if (!allOffsets) {
+        while (ox < 0) ox += state.width; while (oy < 0) oy += state.height;
+        ox %= state.width; oy %= state.height;
+      }
+      if (state.width - ox < 1 || allOffsets) drawAt.push([-state.width, 0]);
+      if (state.height - oy < 1 || allOffsets) drawAt.push([0, -state.height]);
+      if ((state.width - ox < 1 && state.height - oy < 1) || allOffsets) drawAt.push([-state.width, -state.height]);
+      if (allOffsets) {
+        drawAt.push([state.width, 0]);
+        drawAt.push([0, state.height]);
+        drawAt.push([state.width, state.height]);
+      }
     }
     if (borderArr) { // if a border array was passed
       for (let i=0; i<drawAt.length; i++) { // update borderArr
@@ -863,12 +888,13 @@ class GameDrawer {
           if (lowx >= 0) setN(lowx, ycoord, val * lowxf);
           if (highx < state.width) setN(highx, ycoord, val * highxf);
         };
+        const distArrOrig = [cx + 0.5, cy + 0.5, state.width - 0.5 - cx, state.height - 0.5 - cy]; // left, top, right, bottom
         const distArr = [Math.abs(cx + 0.5), Math.abs(cy + 0.5),
           Math.abs(state.width - 0.5 - cx), Math.abs(state.height - 0.5 - cy)]; // left, top, right, bottom
         const valArr = [];
         for (let i=0; i<distArr.length; i++) {
-          if (distArr[i] <= 0.5) valArr.push(1);
-          else if (distArr[i] <= 1.5) valArr.push(1.5 - distArr[i]);
+          if (distArr[i] <= 0.5 && distArrOrig[i] > -0.5 + 1e-6) valArr.push(1);
+          else if (distArr[i] <= 1.5 && distArrOrig[i] > -0.5 + 1e-6) valArr.push(1.5 - distArr[i]);
           else valArr.push(0);
         }
         setX(0, valArr[0]);
