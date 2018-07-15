@@ -246,6 +246,17 @@ class GameBoard {
   }
 
   /**
+   * Undo the last move irrevocably
+   */
+  finalUndo() {
+    if (this._stateStackIdx > 0) {
+      this.undo();
+      this._stateStack.pop();
+      this.drawInfoLine();
+    }
+  }
+
+  /**
    * Undo the last move
    */
   undo() {

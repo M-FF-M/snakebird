@@ -161,8 +161,8 @@ class GameDrawer {
         const cp = this._snakeQueues[this._aniSnakeMoveInd].getFront();
         this._snakeQueues[this._aniSnakeMoveInd].pushFront([cp[0] + direction[0], cp[1] + direction[1]]);
         this._aniEnd = moveRes[1];
-        if (this._aniEnd < 0) console.log('Lost!');
-        else if (this._aniEnd > 0) console.log('Won!');
+        // if (this._aniEnd < 0) console.log('Lost!');
+        // else if (this._aniEnd > 0) console.log('Won!');
         this._aniArray = convertToFullArray(moveRes[2], this._state.snakes.length);
         this._newState = moveRes[3];
         this._aniLength = this._aniArray.length - 1;
@@ -679,7 +679,7 @@ class GameDrawer {
       }
     }
 
-    if (undo) this._gameBoard.undo();
+    if (undo) this._gameBoard.finalUndo();
   }
 
   /**

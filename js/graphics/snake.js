@@ -23,44 +23,80 @@
 function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset, borderArr, globalSlowTime, zoom, mvSnProg = -1) {
   const con2 = getHiddenContext(can);
   if (typeof zoom === 'function') zoom(con2);
-  const lightColor = lighten(color);
+  const lightColor = lighten(color, 0.3);
   let len = partQ.length;
   if (mvSnProg == 2 && !gd._aniAteFruit) len--;
 
   for (let i=len-1; i>=0; i--) { // draw colored snake
     const [lastPos, nextPos] = getPosDiff(partQ, i, len); // 0: left, 1: top, 2: right, 3: bottom
-    const lastLastPos = i < len-1 ? getPosDiff(partQ, i + 1, len)[1] : lastPos;
+    const lastLastPos = i < len-1 ? getPosDiff(partQ, i + 1, len)[0] : lastPos;
     if (i % 2 == 0) con2.fillStyle = color;
     else con2.fillStyle = lightColor;
     const [x, y] = partQ.get(i);
-    const off = calcOffset(offset, i, mvSnProg, gd, len, partQ, x, y);
+    const off = calcOffset(offset, i, mvSnProg, gd, len, partQ, x, y, false);
     const [ox, oy, drawAt] = gd._getAllOffsets(state, x, y, off);
     for (let k=0; k<drawAt.length; k++) {
       const [bx, by] = bCoord(ox + drawAt[k][0], oy + drawAt[k][1]);
-      if (false && mvSnProg >= 0 && mvSnProg <= 1) {
-        
+      if (mvSnProg >= 0 && mvSnProg <= 1) {
+        const [[fsx1, fsy1, fsx2, fsy2], [fmx1, fmy1, fmx2, fmy2], [fex1, fey1, fex2, fey2],
+          [lsx1, lsy1, lsx2, lsy2], [lmx1, lmy1, lmx2, lmy2], [lex1, ley1, lex2, ley2], [cx, cy]]
+          = getEndMoves(lastLastPos, lastPos, nextPos, bx, by, bSize, mvSnProg);
+        if (mvSnProg <= 0.5) {
+          const t = mvSnProg / 0.5;
+          con2.beginPath();
+          con2.moveTo((1 - t) * fsx1 + t * fmx1, (1 - t) * fsy1 + t * fmy1);
+          con2.lineTo((1 - t) * fsx2 + t * fmx2, (1 - t) * fsy2 + t * fmy2);
+          con2.lineTo(lmx1, lmy1);
+          con2.lineTo((1 - t) * lsx1 + t * lmx1, (1 - t) * lsy1 + t * lmy1);
+          if (i == len - 1) con2.lineTo((1 - t) * lsx2 + t * lmx2, (1 - t) * lsy2 + t * lmy2);
+          else blockEndPath(con2, (1 - t) * lsx1 + t * lmx1, (1 - t) * lsy1 + t * lmy1, (1 - t) * lsx2 + t * lmx2, (1 - t) * lsy2 + t * lmy2);
+          con2.lineTo(lmx2, lmy2);
+          con2.lineTo((1 - t) * fsx1 + t * fmx1, (1 - t) * fsy1 + t * fmy1);
+          con2.closePath();
+          con2.fill();
+        } else {
+          const t = (mvSnProg - 0.5) / 0.5;
+          con2.beginPath();
+          con2.moveTo((1 - t) * fmx1 + t * fex1, (1 - t) * fmy1 + t * fey1);
+          con2.lineTo((1 - t) * fmx2 + t * fex2, (1 - t) * fmy2 + t * fey2);
+          con2.lineTo(fmx2, fmy2);
+          con2.lineTo((1 - t) * lmx1 + t * lex1, (1 - t) * lmy1 + t * ley1);
+          if (i == len - 1) con2.lineTo((1 - t) * lmx2 + t * lex2, (1 - t) * lmy2 + t * ley2);
+          else blockEndPath(con2, (1 - t) * lmx1 + t * lex1, (1 - t) * lmy1 + t * ley1, (1 - t) * lmx2 + t * lex2, (1 - t) * lmy2 + t * ley2);
+          con2.lineTo(fmx1, fmy1);
+          con2.lineTo((1 - t) * fmx1 + t * fex1, (1 - t) * fmy1 + t * fey1);
+          con2.closePath();
+          con2.fill();
+        }
+        if (i == 0) {
+          con2.fillStyle = 'rgba(255, 255, 255, 1)';
+          con2.beginPath();
+          con2.arc(cx, cy, bSize / 3, 0, 2 * Math.PI);
+          con2.closePath();
+          con2.fill();
+          con2.fillStyle = color;
+        }
       } else {
         con2.beginPath();
         con2.moveTo(bx - bSize / 2, by - bSize / 2);
-        if (lastPos != 1) con2.lineTo(bx + bSize / 2, by - bSize / 2);
+        if (lastPos != 1 || i == len - 1) con2.lineTo(bx + bSize / 2, by - bSize / 2);
         else blockEndPath(con2, bx - bSize / 2, by - bSize / 2, bx + bSize / 2, by - bSize / 2);
-        if (lastPos != 2) con2.lineTo(bx + bSize / 2, by + bSize / 2);
+        if (lastPos != 2 || i == len - 1) con2.lineTo(bx + bSize / 2, by + bSize / 2);
         else blockEndPath(con2, bx + bSize / 2, by - bSize / 2, bx + bSize / 2, by + bSize / 2);
-        if (lastPos != 3) con2.lineTo(bx - bSize / 2, by + bSize / 2);
+        if (lastPos != 3 || i == len - 1) con2.lineTo(bx - bSize / 2, by + bSize / 2);
         else blockEndPath(con2, bx + bSize / 2, by + bSize / 2, bx - bSize / 2, by + bSize / 2);
-        if (lastPos != 0) con2.lineTo(bx - bSize / 2, by - bSize / 2);
+        if (lastPos != 0 || i == len - 1) con2.lineTo(bx - bSize / 2, by - bSize / 2);
         else blockEndPath(con2, bx - bSize / 2, by + bSize / 2, bx - bSize / 2, by - bSize / 2);
         con2.closePath();
         con2.fill();
-      }
-      // con2.fillRect(bx - bSize / 2, by - bSize / 2, bSize, bSize);
-      if (i == 0) {
-        con2.fillStyle = 'rgba(255, 255, 255, 1)';
-        con2.beginPath();
-        con2.arc(bx, by, bSize / 3, 0, 2 * Math.PI);
-        con2.closePath();
-        con2.fill();
-        con2.fillStyle = color;
+        if (i == 0) {
+          con2.fillStyle = 'rgba(255, 255, 255, 1)';
+          con2.beginPath();
+          con2.arc(bx, by, bSize / 3, 0, 2 * Math.PI);
+          con2.closePath();
+          con2.fill();
+          con2.fillStyle = color;
+        }
       }
     }
   }
@@ -144,6 +180,80 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
 }
 
 /**
+ * Calculate how the end parts of a snake block should move when the snake is moving
+ * @param {number} lastLastPos the original end position (0: left, 1: top, 2: right, 3: bottom)
+ * @param {number} lastPos the new end position (0: left, 1: top, 2: right, 3: bottom)
+ * @param {number} nextPos the new end position of the other end (the end that is closer to the snake head) (0: left, 1: top, 2: right, 3: bottom)
+ * @param {number} bx the x coordinate of the center of the grid cell
+ * @param {number} by the y coordinate of the center of the grid cell
+ * @param {number} bSize the size of a single grid cell
+ * @param {number} mvSnProg a number between 0 and 1 indicating the movement progress of the snake
+ * @return {number[][]} an array describing how the end lines should move: [[fsx1, fsy1, fsx2, fsy2], [fmx1, fmy1, fmx2, fmy2], [fex1, fey1, fex2, fey2],
+ * [lsx1, lsy1, lsx2, lsy2], [lmx1, lmy1, lmx2, lmy2], [lex1, ley1, lex2, ley2], [cx, cy]] where f indicates the "front" line (closer to the snake head), l the
+ * "end" line, s the start positions when the animation begins, m the positions after half the animation and e the final position after the animation
+ * completed and cx, cy represent the current center coordinates of the snake block
+ */
+function getEndMoves(lastLastPos, lastPos, nextPos, bx, by, bSize, mvSnProg) {
+  const [xAdd, yAdd] = lastPos == 0 ? [-bSize, 0] : (lastPos == 1 ? [0, -bSize] : (lastPos == 2 ? [bSize, 0] : [0, bSize]));
+  const [llx1, lly1, llx2, lly2] = getEndLineCoords(lastLastPos, bx + xAdd, by + yAdd, bSize);
+  const [lx1, ly1, lx2, ly2] = getEndLineCoords(lastPos, bx, by, bSize);
+  const [lnx1, lny1, lnx2, lny2] = getEndLineCoords((lastPos + 2) % 4, bx + xAdd, by + yAdd, bSize);
+  const [nx1, ny1, nx2, ny2] = getEndLineCoords(nextPos, bx, by, bSize);
+  let [cx, cy] = [bx, by];
+  if (nextPos == 0) cx += (1 - mvSnProg) * bSize;
+  else if (nextPos == 1) cy += (1 - mvSnProg) * bSize;
+  else if (nextPos == 2) cx -= (1 - mvSnProg) * bSize;
+  else if (nextPos == 3) cy -= (1 - mvSnProg) * bSize;
+  let lmx1, lmy1, lmx2, lmy2;
+  let fmx1, fmy1, fmx2, fmy2;
+  if (lastPos == lastLastPos) {
+    lmx1 = 0.5 * llx1 + 0.5 * lx1; lmy1 = 0.5 * lly1 + 0.5 * ly1;
+    lmx2 = 0.5 * llx2 + 0.5 * lx2; lmy2 = 0.5 * lly2 + 0.5 * ly2;
+  } else if (Math.abs(llx1 - lx1) < 1e-6 && Math.abs(lly1 - ly1) < 1e-6) {
+    lmx1 = llx1; lmy1 = lly1;
+    if (lastLastPos == 0 || lastLastPos == 2) { lmx2 = lx2; lmy2 = lly2; }
+    else { lmx2 = llx2; lmy2 = ly2; }
+  } else {
+    lmx2 = llx2; lmy2 = lly2;
+    if (lastLastPos == 0 || lastLastPos == 2) { lmx1 = lx1; lmy1 = lly1; }
+    else { lmx1 = llx1; lmy1 = ly1; }
+  }
+  if (Math.abs(nextPos - lastPos) == 2) {
+    fmx1 = 0.5 * lnx1 + 0.5 * nx1; fmy1 = 0.5 * lny1 + 0.5 * ny1;
+    fmx2 = 0.5 * lnx2 + 0.5 * nx2; fmy2 = 0.5 * lny2 + 0.5 * ny2;
+  } else if (Math.abs(lnx1 - nx1) < 1e-6 && Math.abs(lny1 - ny1) < 1e-6) {
+    fmx1 = lnx1; fmy1 = lny1;
+    if (lastPos == 0 || lastPos == 2) { fmx2 = nx2; fmy2 = lny2; }
+    else { fmx2 = lnx2; fmy2 = ny2; }
+  } else {
+    fmx2 = lnx2; fmy2 = lny2;
+    if (lastPos == 0 || lastPos == 2) { fmx1 = nx1; fmy1 = lny1; }
+    else { fmx1 = lnx1; fmy1 = ny1; }
+  }
+  return [[lnx1, lny1, lnx2, lny2], [fmx1, fmy1, fmx2, fmy2], [nx1, ny1, nx2, ny2],
+    [llx1, lly1, llx2, lly2], [lmx1, lmy1, lmx2, lmy2], [lx1, ly1, lx2, ly2], [cx, cy]];
+}
+
+/**
+ * Calculate the coordinates of an end line of a snake block
+ * @param {number} pos the position of the end line (0: left, 1: top, 2: right, 3: bottom)
+ * @param {number} bx the x coordinate of the center of the grid cell
+ * @param {number} by the y coordinate of the center of the grid cell
+ * @param {number} bSize the size of a single grid cell
+ * @return {number[]} an array containing the x and y coordinates of the start and end point of the line: [x1, y1, x2, y2]
+ */
+function getEndLineCoords(pos, bx, by, bSize) {
+  if (pos == 0)
+    return [bx - bSize / 2, by + bSize / 2, bx - bSize / 2, by - bSize / 2];
+  else if (pos == 1)
+    return [bx - bSize / 2, by - bSize / 2, bx + bSize / 2, by - bSize / 2];
+  else if (pos == 2)
+    return [bx + bSize / 2, by - bSize / 2, bx + bSize / 2, by + bSize / 2];
+  else
+    return [bx + bSize / 2, by + bSize / 2, bx - bSize / 2, by + bSize / 2];
+}
+
+/**
  * Draw the curved end path of the block
  * @param {CanvasRenderingContext2D} con the context of the canvas
  * @param {number} sx the start x coordinate
@@ -170,10 +280,11 @@ function blockEndPath(con, sx, sy, tx, ty) {
  * @param {Queue} partQ a queue with the body parts of the snake
  * @param {number} x the x coordinate of the current body part
  * @param {number} y the y coordinate of the current body part
+ * @param {boolean} [specialHeadTreatment] whether to calculate special head offset coordinates based on the progress of the snake movement
  * @return {number[]} the new calculated offset
  */
-function calcOffset(off, i, mvSnProg, gd, len, partQ, x, y) {
-  if (i != 0 && mvSnProg >= 0 && mvSnProg <= 1) {
+function calcOffset(off, i, mvSnProg, gd, len, partQ, x, y, specialHeadTreatment = true) {
+  if ((i != 0 || !specialHeadTreatment) && mvSnProg >= 0 && mvSnProg <= 1) {
     if (i == len - 1 && !gd._aniAteFruit) {
       let [nx, ny] = partQ.get(i-1);
       if (gd._fallThrough) {
@@ -206,7 +317,11 @@ function getPosDiff(partQ, idx, len) {
     npdiff = [partQ.get(idx-1)[0] - x, partQ.get(idx-1)[1] - y];
     lpdiff = [-npdiff[0], -npdiff[1]];
   }
-  const lastPos = lpdiff[0] == -1 ? 0 : (lpdiff[0] == 1 ? 2 : (lpdiff[1] == -1 ? 1 : 3)); // 0: left, 1: top, 2: right, 3: bottom
-  const nextPos = npdiff[0] == -1 ? 0 : (npdiff[0] == 1 ? 2 : (npdiff[1] == -1 ? 1 : 3)); // 0: left, 1: top, 2: right, 3: bottom
+  const lastPos = (lpdiff[0] == -1 || lpdiff[0] >= 2) ? 0
+    : ((lpdiff[0] == 1 || lpdiff[0] <= -2) ? 2
+    : ((lpdiff[1] == -1 || lpdiff[1] >= 2) ? 1 : 3)); // 0: left, 1: top, 2: right, 3: bottom
+  const nextPos = (npdiff[0] == -1 || npdiff[0] >= 2) ? 0
+    : ((npdiff[0] == 1 || npdiff[0] <= -2) ? 2
+    : ((npdiff[1] == -1 || npdiff[1] >= 2) ? 1 : 3)); // 0: left, 1: top, 2: right, 3: bottom
   return [lastPos, nextPos];
 }
