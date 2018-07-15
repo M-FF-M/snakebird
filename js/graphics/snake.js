@@ -25,6 +25,7 @@
  */
 function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset, borderArr, globalSlowTime, zoom, mvSnProg = -1, fallThrough = false,
     disProgr = 0, portation = [false]) {
+  disProgr *= disProgr;
   const con2 = getHiddenContext(can);
   if (typeof zoom === 'function') zoom(con2);
   const lightColor = lighten(color, 0.3);
@@ -84,25 +85,17 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
     drawArrB.push([[i, lastPos, nextPos, lA, tA, rA, bA], [ox, oy, drawAt]]);
   }
 
+
   const pA = [];
+  let trans = portation[0] ? (portation[1] <= 0.5 ? (0.5 - portation[1]) / 0.5 : (portation[1] - 0.5) / 0.5) : 1;
   for (let k=0; k<drawArrA[0][1][2].length; k++) { // draw colored snake
     pA[k] = [];
     for (let i=0; i<drawArrA_1.length; i++) pA[k].push([drawArrA_1[i][0] + drawArrA[0][1][2][k][0] + offset[0], drawArrA_1[i][1] + drawArrA[0][1][2][k][1] + offset[1]]);
     scaleCon(con2, state, portation, pA[k], len, bCoord);
     for (let q=0; q<drawArrA.length; q++) {
       const [[i, lastLastPos, lastPos, nextPos], [ox, oy, drawAt]] = drawArrA[q];
-      if (portation[0]) {
-        if (portation[1] <= 0.5) {
-          if (i % 2 == 0) con2.fillStyle = transparentize(color, (0.5 - portation[1]) / 0.5);
-          else con2.fillStyle = transparentize(lightColor, (0.5 - portation[1]) / 0.5);
-        } else {
-          if (i % 2 == 0) con2.fillStyle = transparentize(color, (portation[1] - 0.5) / 0.5);
-          else con2.fillStyle = transparentize(lightColor, (portation[1] - 0.5) / 0.5);
-        }
-      } else {
-        if (i % 2 == 0) con2.fillStyle = color;
-        else con2.fillStyle = lightColor;
-      }
+      if (i % 2 == 0) con2.fillStyle = transparentize(color, trans * (1 - disProgr));
+      else con2.fillStyle = transparentize(lightColor, trans * (1 - disProgr));
       const [bx, by] = bCoord(ox + drawAt[k][0], oy + drawAt[k][1]);
       if (mvSnProg >= 0 && mvSnProg <= 1) { // draw active snake movement
         const [[fsx1, fsy1, fsx2, fsy2], [fmx1, fmy1, fmx2, fmy2], [fex1, fey1, fex2, fey2],
@@ -136,12 +129,12 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
           con2.fill();
         }
         if (i == 0) { // snake head indicator
-          con2.fillStyle = 'rgba(255, 255, 255, 1)';
+          con2.fillStyle = transparentize('rgba(255, 255, 255, 1)', trans * (1 - disProgr));
           con2.beginPath();
           con2.arc(cx, cy, bSize / 3, 0, 2 * Math.PI);
           con2.closePath();
           con2.fill();
-          con2.fillStyle = color;
+          con2.fillStyle = transparentize(color, trans * (1 - disProgr));
         }
       } else { // draw snake (without active movement)
         con2.beginPath();
@@ -157,19 +150,19 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
         con2.closePath();
         con2.fill();
         if (i == 0) { // snake head indicator
-          con2.fillStyle = 'rgba(255, 255, 255, 1)';
+          con2.fillStyle = transparentize('rgba(255, 255, 255, 1)', trans * (1 - disProgr));
           con2.beginPath();
           con2.arc(bx, by, bSize / 3, 0, 2 * Math.PI);
           con2.closePath();
           con2.fill();
-          con2.fillStyle = color;
+          con2.fillStyle = transparentize(color, trans * (1 - disProgr));
         }
       }
     }
     restoreCon(con2, portation);
   }
 
-  const con3 = getHiddenContext(can, true, 1);
+  let con3 = getHiddenContext(can, true, 1);
   if (typeof zoom === 'function') zoom(con3);
   con3.fillStyle = 'rgba(255, 255, 255, 1)';
   for (let k=0; k<drawArrB[0][1][2].length; k++) { // draw snake with rounded corners
@@ -234,9 +227,67 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
   con2.globalCompositeOperation = 'destination-in';
   drawHiddenCanvas(con2, 1); // draw snake with rounded corners
   con2.globalCompositeOperation = 'source-over';
+
+  if (typeof zoom === 'function') con3.restore();
+  if (disProgr > 0) {
+    con3 = getHiddenContext(can, true, 1);
+    if (typeof zoom === 'function') zoom(con3);
+    con3.fillStyle = 'rgba(255, 255, 255, 1)';
+    for (let k=0; k<drawArrB[0][1][2].length; k++) { // let snake disappear
+      for (let q=0; q<drawArrB.length; q++) {
+        const [[i, lastPos, nextPos, lA, tA, rA, bA], [ox, oy, drawAt]] = drawArrB[q];
+        const [bx, by] = bCoord(ox + drawAt[k][0], oy + drawAt[k][1]);
+        if (i % 7 == 0) { fillPartCircle(con3, bx - 0.15 * bSize, by - 0.1 * bSize, bSize, 1.7 * (1 - disProgr), -0.1, 0.05);
+          fillPartCircle(con3, bx + 0.3 * bSize, by + 0.4 * bSize, bSize, 0.7 * (1 - disProgr), 0, -0.1); }
+        
+        if (i % 7 == 1) { fillPartCircle(con3, bx - 0.3 * bSize, by, bSize, 0.7 * (1 - disProgr), -0.05, 0.05);
+          fillPartCircle(con3, bx + 0.2 * bSize, by - 0.2 * bSize, bSize, 1.3 * (1 - disProgr), 0, -0.05);
+          fillPartCircle(con3, bx + 0.25 * bSize, by + 0.3 * bSize, bSize, 0.9 * (1 - disProgr), 0.05, -0.1); }
+        
+        if (i % 7 == 2) { fillPartCircle(con3, bx, by - 0.1 * bSize, bSize, 1.9 * (1 - disProgr), -0.05, -0.05);
+          fillPartCircle(con3, bx + 0.1 * bSize, by + 0.4 * bSize, bSize, 0.8 * (1 - disProgr), 0.1, -0.05); }
+        
+        if (i % 7 == 3) { fillPartCircle(con3, bx + 0.1 * bSize, by - 0.1 * bSize, bSize, 1.6 * (1 - disProgr), 0.05, -0.05);
+          fillPartCircle(con3, bx - 0.3 * bSize, by + 0.4 * bSize, bSize, 0.5 * (1 - disProgr), -0.1, 0.1); }
+        
+        if (i % 7 == 4) { fillPartCircle(con3, bx, by + 0.2 * bSize, bSize, 1.8 * (1 - disProgr), 0.05, -0.1);
+          fillPartCircle(con3, bx - 0.4 * bSize, by - 0.35 * bSize, bSize, 0.5 * (1 - disProgr), 0.1, 0.05);
+          fillPartCircle(con3, bx + 0.3 * bSize, by - 0.3 * bSize, bSize, 0.7 * (1 - disProgr), 0.1, -0.05); }
+        
+        if (i % 7 == 5) { fillPartCircle(con3, bx, by, bSize, 1.8 * (1 - disProgr), 0.1, 0.05); }
+        
+        if (i % 7 == 6) { fillPartCircle(con3, bx - 0.2 * bSize, by + 0.2 * bSize, bSize, 1.9 * (1 - disProgr), -0.05, 0.1);
+          fillPartCircle(con3, bx, by - 0.3 * bSize, bSize, 0.9 * (1 - disProgr), -0.1, -0.05);
+          fillPartCircle(con3, bx + 0.3 * bSize, by, bSize, 0.6 * (1 - disProgr), 0.05, -0.05); }
+      }
+    }
+
+    con2.globalCompositeOperation = 'destination-in';
+    drawHiddenCanvas(con2, 1); // draw snake with rounded corners
+    con2.globalCompositeOperation = 'source-over';
+  }
   drawHiddenCanvas(con, 0, zoom); // draw snake on main canvas
 
   if (typeof zoom === 'function') con3.restore();
+}
+
+/**
+ * Draw a (not quite perfect) circle
+ * @param {CanvasRenderingContext2D} con the context of the canvas
+ * @param {number} bx the x coordinate of the circle center
+ * @param {number} by the y coordinate of the circle center
+ * @param {number} bSize the size of a single grid cell
+ * @param {number} scale a scaling factor
+ * @param {number} angA an angle to rotate the top tangent of the circle by (0.5 = 90 degrees)
+ * @param {number} angB an angle to rotate the bottom tangent of the circle by (0.5 = 90 degrees)
+ */
+function fillPartCircle(con, bx, by, bSize, scale, angA, angB) {
+  con.beginPath();
+  con.moveTo(bx, by - scale * bSize / 2);
+  bezierCurve(con, bx, by - scale * bSize / 2, bx, by + scale * bSize / 2, angA * Math.PI, angB * Math.PI, SQRT_2, SQRT_2);
+  bezierCurve(con, bx, by + scale * bSize / 2, bx, by - scale * bSize / 2, angB * Math.PI, angA * Math.PI, SQRT_2, SQRT_2);
+  con.closePath();
+  con.fill();
 }
 
 /**

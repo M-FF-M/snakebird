@@ -111,6 +111,8 @@ function convertToFullArray(resArr, snakeNum) {
  * @param {boolean} [moveInfo] whether to include detailed move info in the response (see description
  * below; if set to false, the method will return the GameState object which is normally returned
  * at index 3 of the return array)
+ * @param {boolean} [changeGravity] whether to change the direction of gravity in clockwise order
+ * when the snake eats a fruit
  * @return {any[]} will return null if the move was invalid. If the move was valid the array will
  * contain:
  * - at index 0: a boolean -- indicating whether or not the snake ate a fruit.
@@ -143,7 +145,7 @@ function convertToFullArray(resArr, snakeNum) {
  * - at index 3: the new game state (a GameState object).
  */
 function gameTransition(gameState, snake, direction, fallThrough = false, gravity = DOWN,
-    moveInfo = true) {
+    moveInfo = true, changeGravity = false) {
   gameState = gameState.clone(); // clone state to be able to modify it
   let ateFruit = false; // whether or not the snake ate a fruit
   // at the beginning, all snakes and blocks are assumed to be movable
@@ -307,6 +309,13 @@ function gameTransition(gameState, snake, direction, fallThrough = false, gravit
       }
     }
     reinsertTargetAndPortals(gameState);
+  }
+  if (ateFruit && changeGravity) {
+    if (gravity == DOWN) gravity = LEFT;
+    else if (gravity == LEFT) gravity = UP;
+    else if (gravity == UP) gravity = RIGHT;
+    else if (gravity == RIGHT) gravity = DOWN;
+    gameState.gravity = gravity;
   }
   const alreadySeen = new Map(); // saves which positions have already been encountered
   alreadySeen.set(gameState.toString(), true);

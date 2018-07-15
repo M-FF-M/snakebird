@@ -145,6 +145,11 @@ class GameState {
      * @type {boolean}
      */
     this.gameWon = false;
+    /**
+     * The direction of gravity
+     * @type {number[]}
+     */
+    this.gravity = DOWN;
     if (typeof stateStr === 'string') {
       if (this.lines[0].search(/^[0-9]+ [0-9]+$/) != -1) {
         this.lines = this.lines.slice(1);
@@ -304,6 +309,7 @@ class GameState {
     ret.gameWon = this.gameWon;
     ret.height = this.height;
     ret.width = this.width;
+    ret.gravity = this.gravity;
     for (let i=0; i<this.snakes.length; i++) {
       ret.snakes[i] = new Queue();
       for (let k=0; k<this.snakes[i].length; k++)

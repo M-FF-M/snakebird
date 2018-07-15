@@ -12,6 +12,19 @@ const INFO_LINE_HEIGHT = 40;
 const MIN_SIZE = [300, 200];
 
 /**
+ * Create a game board from a level description
+ * @param {HTMLElement} parentElem the parent element the game board should be added to
+ * @param {object} obj a level description object
+ * @param {boolean} [noCyclicAni] whether or not to animate grass, clouds etc.
+ * @param {boolean} [noAni] whether or not to animate falling snakes
+ * @return {GameBoard} the correspoinding game board
+ */
+function fromLevelDescription(parentElem, obj, noCyclicAni = false, noAni = false) {
+  const st = new GameState(obj.board);
+  return new GameBoard(parentElem, st, obj.fallThrough ? true : false, obj.changeGravity ? true : false, noCyclicAni, noAni);
+}
+
+/**
  * Represents a snake bird game board
  */
 class GameBoard {
@@ -22,10 +35,12 @@ class GameBoard {
    * @param {boolean} [fallThrough] if set to true, snakes and objects that fall out of the board
    * will appear again at the top (and if they leave the board through the left border, they appear
    * again at the right side of the board)
+   * @param {boolean} [changeGravity] whether to change the direction of gravity in clockwise order
+   * when the snake eats a fruit
    * @param {boolean} [noCyclicAni] whether or not to animate grass, clouds etc.
    * @param {boolean} [noAni] whether or not to animate falling snakes
    */
-  constructor(parentElem, gameState, fallThrough = false, noCyclicAni = false, noAni = false) {
+  constructor(parentElem, gameState, fallThrough = false, changeGravity = false, noCyclicAni = false, noAni = false) {
     this.resize = this.resize.bind(this);
     this.click = this.click.bind(this);
     this.canvasClick = this.canvasClick.bind(this);
@@ -49,6 +64,7 @@ class GameBoard {
     this._stateStack = [gameState.clone()];
     this._stateStackIdx = 0;
     this._fallThrough = fallThrough;
+    this._changeGravity = changeGravity;
     this._state = gameState;
     this._noCyclicAni = noCyclicAni;
     this._noAni = noAni;
@@ -84,8 +100,8 @@ class GameBoard {
       this._parent.appendChild(this._canvasArr[i]);
     }
     this._drawer = new GameDrawer(this._canvasArr[1], 0, INFO_LINE_HEIGHT, this._width,
-      this._height - INFO_LINE_HEIGHT, this._state, this, this._fallThrough, this._noCyclicAni,
-      this._noAni);
+      this._height - INFO_LINE_HEIGHT, this._state, this, this._fallThrough, this._changeGravity,
+      this._noCyclicAni, this._noAni);
     this._drawer.draw(true);
     this._activeSnake = this._state.snakeToCharacter[0];
     this._drawer.addEventListener('click', this.click);

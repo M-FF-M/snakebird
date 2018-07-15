@@ -60,11 +60,13 @@ class GameDrawer {
    * @param {GameBoard} gameBoard the game board
    * @param {boolean} [fallThrough] whether the objects that fall out of the board appear again
    * on the other side of the board
+   * @param {boolean} [changeGravity] whether to change the direction of gravity in clockwise order
+   * when the snake eats a fruit
    * @param {boolean} [noCyclicAni] whether or not to animate grass, clouds etc.
    * @param {boolean} [noAni] whether or not to animate falling snakes
    */
   constructor(canvas, x, y, width, height, gameState, gameBoard, fallThrough = false,
-      noCyclicAni = false, noAni = false) {
+      changeGravity = false, noCyclicAni = false, noAni = false) {
     this.draw = this.draw.bind(this);
     this.click = this.click.bind(this);
     this.mouseDown = this.mouseDown.bind(this);
@@ -108,6 +110,7 @@ class GameDrawer {
     this._zoomStartTime = 0;
     this._centerCoords = [0.5, 0.5];
     this._fallThrough = fallThrough;
+    this._changeGravity = changeGravity;
     this._currentGravity = DOWN;
     this._blockInfoMap = new Map();
     this._calcBlockInfoArr();
@@ -154,7 +157,7 @@ class GameDrawer {
   tryMove(snake, direction, gravity = DOWN) {
     this._currentGravity = gravity;
     if (!this._animationRunning && this._state.snakeMap.has(snake) && !this._state.gameEnded) {
-      const moveRes = gameTransition(this._state, snake, direction, this._fallThrough, gravity);
+      const moveRes = gameTransition(this._state, snake, direction, this._fallThrough, this._state.gravity, true, this._changeGravity);
       if (moveRes !== null) {
         this._aniSnakeMoveInd = this._state.snakeMap.get(snake);
         this._aniAteFruit = moveRes[0];
