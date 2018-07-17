@@ -88,6 +88,7 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
 
   const pA = [];
   let trans = portation[0] ? (portation[1] <= 0.5 ? (0.5 - portation[1]) / 0.5 : (portation[1] - 0.5) / 0.5) : 1;
+  trans = 1 - ((1 - trans) * (1 - trans));
   for (let k=0; k<drawArrA[0][1][2].length; k++) { // draw colored snake
     pA[k] = [];
     for (let i=0; i<drawArrA_1.length; i++) pA[k].push([drawArrA_1[i][0] + drawArrA[0][1][2][k][0] + offset[0], drawArrA_1[i][1] + drawArrA[0][1][2][k][1] + offset[1]]);

@@ -490,8 +490,8 @@ class GameDrawer {
           const lastPos = this._aniArray[cStep][i];
           let nextPos = this._aniArray[cStep + 1][i];
           if ((nextPos.length == 3 && nextPos[2] == 1) || (this._aniEnd == -1 && cStep == this._aniLength - 1)) {
-            if (isSnake) snakeDeathProg[ib] = cStepT;
-            else blockDeathProg[ib] = cStepT;
+            if (isSnake) snakeDeathProg[ib] = cStepT * (2 / 3) + (1 / 3);
+            else blockDeathProg[ib] = cStepT * (2 / 3) + (1 / 3);
           }
           if (nextPos[0] < -10 && nextPos[1] < -10) {
             if (isSnake) drawSnake[ib] = false;
@@ -502,14 +502,45 @@ class GameDrawer {
           }
           if (lastPos.length == 6 || lastPos.length == 7) { // portation
             let oPos = lastPos;
-            if (cStepT > 0.5) oPos = nextPos;
-            if (isSnake) snakePortation[ib] = [true, cStepT, lastPos[0], lastPos[1], lastPos[2], lastPos[3],
+            let progr = cStepT * 0.5 + 0.25;
+            if (cStep == this._aniLength - 1) { // end of portation cannot be animated in next frame (because there are no more frames)
+              progr = cStepT * (2 / 3) + (1 / 3);
+              if (cStepT > 0.25) oPos = nextPos;
+            } else { // end of portation can be animated in next frame
+              if (cStepT > 0.5) oPos = nextPos;
+            }
+            if (isSnake) snakePortation[ib] = [true, progr, lastPos[0], lastPos[1], lastPos[2], lastPos[3],
               state.portalPos[lastPos[4]][0], state.portalPos[lastPos[4]][1], state.portalPos[lastPos[5]][0], state.portalPos[lastPos[5]][1]];
-            else blockPortation[ib] = [true, cStepT, lastPos[0], lastPos[1], lastPos[2], lastPos[3],
+            else blockPortation[ib] = [true, progr, lastPos[0], lastPos[1], lastPos[2], lastPos[3],
               state.portalPos[lastPos[4]][0], state.portalPos[lastPos[4]][1], state.portalPos[lastPos[5]][0], state.portalPos[lastPos[5]][1]];
             if (isSnake) snakeOffsets[ib] = [oPos[0] - initialPos[0], oPos[1] - initialPos[1]];
             else blockOffsets[ib] = [oPos[0] - initialPos[0], oPos[1] - initialPos[1]];
             continue;
+          }
+          if (cStep < this._aniLength - 1 && cStepT >= 0.5) {
+            const nextNextPos = this._aniArray[cStep + 2][i];
+            if (nextPos.length == 6 || nextPos.length == 7) { // portation during next step
+              let progr = (cStepT - 0.5) / 2; // end of portation can be animated in next frame
+              if (cStep == this._aniLength - 2) progr = (cStepT - 0.5) / 1.5; // end of portation cannot be animated in next frame (because there are no more frames)
+              if (isSnake) snakePortation[ib] = [true, progr, nextPos[0], nextPos[1], nextPos[2], nextPos[3],
+                state.portalPos[nextPos[4]][0], state.portalPos[nextPos[4]][1], state.portalPos[nextPos[5]][0], state.portalPos[nextPos[5]][1]];
+              else blockPortation[ib] = [true, progr, nextPos[0], nextPos[1], nextPos[2], nextPos[3],
+                state.portalPos[nextPos[4]][0], state.portalPos[nextPos[4]][1], state.portalPos[nextPos[5]][0], state.portalPos[nextPos[5]][1]];
+            }
+            if ((nextNextPos.length == 3 && nextNextPos[2] == 1) || (this._aniEnd == -1 && cStep + 1 == this._aniLength - 1)) {
+              if (isSnake) snakeDeathProg[ib] = (cStepT - 0.5) / 1.5;
+              else blockDeathProg[ib] = (cStepT - 0.5) / 1.5;
+            }
+          }
+          if (cStep > 0 && cStepT <= 0.5) {
+            const lastLastPos = this._aniArray[cStep - 1][i];
+            if (lastLastPos.length == 6 || lastLastPos.length == 7) { // portation during last step
+              let progr = 0.75 + cStepT / 2; // end of portation can be animated in next (= this) frame
+              if (isSnake) snakePortation[ib] = [true, progr, lastLastPos[0], lastLastPos[1], lastLastPos[2], lastLastPos[3],
+                state.portalPos[lastLastPos[4]][0], state.portalPos[lastLastPos[4]][1], state.portalPos[lastLastPos[5]][0], state.portalPos[lastLastPos[5]][1]];
+              else blockPortation[ib] = [true, progr, lastLastPos[0], lastLastPos[1], lastLastPos[2], lastLastPos[3],
+                state.portalPos[lastLastPos[4]][0], state.portalPos[lastLastPos[4]][1], state.portalPos[lastLastPos[5]][0], state.portalPos[lastLastPos[5]][1]];
+            }
           }
           const cPos = [(1 - cStepT) * lastPos[0] + cStepT * nextPos[0],
             (1 - cStepT) * lastPos[1] + cStepT * nextPos[1]];

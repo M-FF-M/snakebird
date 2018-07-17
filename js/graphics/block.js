@@ -39,6 +39,7 @@ function drawBlockFront(state, con, bSize, bCoord, partQ, color, offset, borderA
   }
   const pA = [];
   let trans = portation[0] ? (portation[1] <= 0.5 ? (0.5 - portation[1]) / 0.5 : (portation[1] - 0.5) / 0.5) : 1;
+  trans = 1 - ((1 - trans) * (1 - trans));
   for (let k=0; k<drawArr[0][1][2].length; k++) {
     if (disProgr > 0) {
       con.save();
@@ -188,6 +189,7 @@ function drawBlockBack(state, con, bSize, bCoord, partQ, color, offset, borderAr
   }
   const pA = [];
   let trans = portation[0] ? (portation[1] <= 0.5 ? (0.5 - portation[1]) / 0.5 : (portation[1] - 0.5) / 0.5) : 1;
+  trans = 1 - ((1 - trans) * (1 - trans));
   for (let k=0; k<drawArr[0][1][2].length; k++) {
     if (disProgr > 0) {
       con.save();
