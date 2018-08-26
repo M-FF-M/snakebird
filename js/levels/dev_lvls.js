@@ -1,4 +1,20 @@
 
+/*
+Level object:
+{
+  name: level name,
+  fallThrough: whether snakes that fall out of the board appear again on the other side,
+  changeGravity: whether to change the direction of gravity when a snake eats a fruit,
+  options: {
+    allowMovingWithoutSpace: if set to true, a snake can move without space
+      if the object blocking its path is moved at the same time,
+    allowTailBiting: if allowMovingWithoutSpace is set to true, but this
+      parameter is set to false, a snake can move without space if it is not blocking itself
+  },
+  board: see below or GameState.md
+}
+*/
+
 /* // Level Template
 {
   board:

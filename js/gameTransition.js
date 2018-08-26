@@ -1,11 +1,5 @@
 
 /**
- * If set to true, a snake that is blocked by an object on both sides can still move the object
- * (if there's enough space on the rest of the board)
- * @type {boolean}
- */
-let ALLOW_MOVING_WITHOUT_SPACE = false;
-/**
  * Indicates movement to the left
  * @type {number[]}
  */
@@ -113,6 +107,11 @@ function convertToFullArray(resArr, snakeNum) {
  * at index 3 of the return array)
  * @param {boolean} [changeGravity] whether to change the direction of gravity in clockwise order
  * when the snake eats a fruit
+ * @param {object} [options] additional options to be taken into account when calculating the next state
+ * @param {boolean} [options.allowMovingWithoutSpace] if set to true, a snake can move without space
+ * if the object blocking its path is moved at the same time
+ * @param {boolean} [options.allowTailBiting] if allowMovingWithoutSpace is set to true, but this
+ * parameter is set to false, a snake can move without space if it is not blocking itself
  * @return {any[]} will return null if the move was invalid. If the move was valid the array will
  * contain:
  * - at index 0: a boolean -- indicating whether or not the snake ate a fruit.
@@ -145,7 +144,8 @@ function convertToFullArray(resArr, snakeNum) {
  * - at index 3: the new game state (a GameState object).
  */
 function gameTransition(gameState, snake, direction, fallThrough = false, gravity = DOWN,
-    moveInfo = true, changeGravity = false) {
+    moveInfo = true, changeGravity = false, options = {}) {
+  const { allowMovingWithoutSpace = false, allowTailBiting = false } = options;
   gameState = gameState.clone(); // clone state to be able to modify it
   let ateFruit = false; // whether or not the snake ate a fruit
   // at the beginning, all snakes and blocks are assumed to be movable
@@ -217,9 +217,9 @@ function gameTransition(gameState, snake, direction, fallThrough = false, gravit
       fallThrough ? WRAP_AROUND : BLOCK_LEFT_RIGHT(gravity)); // value at new position
     if (val > 0) { // snake or block blocks the new position -- try to move them
       snakesStatic[snIdx] = true;
-      if (val == SNAKE(snIdx)) return null;
+      if (val == SNAKE(snIdx) && !(allowMovingWithoutSpace && allowTailBiting)) return null;
       const val2 = val >= 32 ? GET_BLOCK(val) + snakesStatic.length : GET_SNAKE(val);
-      if (ALLOW_MOVING_WITHOUT_SPACE) {
+      if (allowMovingWithoutSpace) {
         const lastpos = cs.getBack(); // the snake didn't eat a fruit --> already remove last body part
                                       // to make room for other objects
         gameState.setStrVal(lastpos[0], lastpos[1], '.');
@@ -233,7 +233,7 @@ function gameTransition(gameState, snake, direction, fallThrough = false, gravit
       if (res[0] == GAME_WON) throw new Error('The game can\'t have been won after one move when the first move was to move other objects');
       retArr.push(res[1]);
       nSnIdx = res[4][snIdx]; // the snake index might have changed due to a snake entering the target
-      moveSnake(cs, nx, ny, snIdx, nSnIdx, false, !ALLOW_MOVING_WITHOUT_SPACE);
+      moveSnake(cs, nx, ny, snIdx, nSnIdx, false, !allowMovingWithoutSpace);
       if (res[0] == OUT_OF_BOARD_ONTO_SPIKE) {
         reinsertTargetAndPortals(gameState);
         if (moveInfo) return [ateFruit, OUT_OF_BOARD_ONTO_SPIKE, retArr, gameState];

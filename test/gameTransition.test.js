@@ -98,42 +98,32 @@ function gameTransitionTest() {
     }
   }
 
-  const orig = ALLOW_MOVING_WITHOUT_SPACE;
-
-  ALLOW_MOVING_WITHOUT_SPACE = true;
   state = new GameState(specialBlockingMoveSamples[0]);
-  result = gameTransition(state, 'R', LEFT);
+  result = gameTransition(state, 'R', LEFT, false, DOWN, true, false, { allowMovingWithoutSpace: true });
   state = result[3];
   assertStrictEqual(state.toString(), specialBlockingMoveSamplesSol[0][0]);
   assertStrictEqual(state.internalToString(), specialBlockingMoveSamplesSol[0][1]);
   assertStrictEqual(JSON.stringify(result.slice(0, 3)), specialBlockingMoveSamplesSol[0][2]);
 
-  ALLOW_MOVING_WITHOUT_SPACE = false;
   result = gameTransition(state, 'R', LEFT);
   assertStrictEqual(result, null);
 
-  ALLOW_MOVING_WITHOUT_SPACE = true;
   state = new GameState(specialBlockingMoveSamples[1]);
+  result = gameTransition(state, 'R', RIGHT, false, DOWN, true, false, { allowMovingWithoutSpace: true });
+  assertStrictEqual(result, null);
+
   result = gameTransition(state, 'R', RIGHT);
   assertStrictEqual(result, null);
 
-  ALLOW_MOVING_WITHOUT_SPACE = false;
-  result = gameTransition(state, 'R', RIGHT);
-  assertStrictEqual(result, null);
-
-  ALLOW_MOVING_WITHOUT_SPACE = true;
   state = new GameState(specialBlockingMoveSamples[2]);
-  result = gameTransition(state, 'R', RIGHT);
+  result = gameTransition(state, 'R', RIGHT, false, DOWN, true, false, { allowMovingWithoutSpace: true });
   state = result[3];
   assertStrictEqual(state.toString(), specialBlockingMoveSamplesSol[1][0]);
   assertStrictEqual(state.internalToString(), specialBlockingMoveSamplesSol[1][1]);
   assertStrictEqual(JSON.stringify(result.slice(0, 3)), specialBlockingMoveSamplesSol[1][2]);
 
-  ALLOW_MOVING_WITHOUT_SPACE = false;
   result = gameTransition(state, 'R', RIGHT);
   assertStrictEqual(result, null);
-
-  ALLOW_MOVING_WITHOUT_SPACE = orig;
 
   /*moves = [
     [['R', RIGHT], ['R', RIGHT], ['R', DOWN], ['R', RIGHT], ['R', RIGHT]],

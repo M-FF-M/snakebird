@@ -21,7 +21,8 @@ const MIN_SIZE = [300, 200];
  */
 function fromLevelDescription(parentElem, obj, noCyclicAni = false, noAni = false) {
   const st = new GameState(obj.board);
-  return new GameBoard(parentElem, st, obj.fallThrough ? true : false, obj.changeGravity ? true : false, noCyclicAni, noAni);
+  return new GameBoard(parentElem, st, obj.fallThrough ? true : false, obj.changeGravity ? true : false,
+    obj.options || {}, noCyclicAni, noAni);
 }
 
 /**
@@ -37,10 +38,17 @@ class GameBoard {
    * again at the right side of the board)
    * @param {boolean} [changeGravity] whether to change the direction of gravity in clockwise order
    * when the snake eats a fruit
+   * @param {object} [options] additional options to be taken into account when calculating the next state
+   * @param {boolean} [options.allowMovingWithoutSpace] if set to true, a snake can move without space
+   * if the object blocking its path is moved at the same time
+   * @param {boolean} [options.allowTailBiting] if allowMovingWithoutSpace is set to true, but this
+   * parameter is set to false, a snake can move without space if it is not blocking itself
    * @param {boolean} [noCyclicAni] whether or not to animate grass, clouds etc.
    * @param {boolean} [noAni] whether or not to animate falling snakes
    */
-  constructor(parentElem, gameState, fallThrough = false, changeGravity = false, noCyclicAni = false, noAni = false) {
+  constructor(parentElem, gameState, fallThrough = false, changeGravity = false, options = {}, noCyclicAni = false, noAni = false) {
+    const { allowMovingWithoutSpace = false, allowTailBiting = false } = options;
+    this._options = { allowMovingWithoutSpace, allowTailBiting };
     this.resize = this.resize.bind(this);
     this.click = this.click.bind(this);
     this.canvasClick = this.canvasClick.bind(this);
@@ -101,7 +109,7 @@ class GameBoard {
     }
     this._drawer = new GameDrawer(this._canvasArr[1], 0, INFO_LINE_HEIGHT, this._width,
       this._height - INFO_LINE_HEIGHT, this._state, this, this._fallThrough, this._changeGravity,
-      this._noCyclicAni, this._noAni);
+      this._options, this._noCyclicAni, this._noAni);
     this._drawer.draw(true);
     this._activeSnake = this._state.snakeToCharacter[0];
     this._drawer.addEventListener('click', this.click);
