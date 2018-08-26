@@ -80,6 +80,7 @@ class GameBoard {
     this._clouds = [];
     this._cloudPositions = [];
     this._actualClouds = [];
+    this._mountainArr = [];
     for (let i=0; i<12; i++) {
       this._clouds.push(generateCloud(0.7 + Math.random() * 0.6, 12 + Math.floor(Math.random() * 7)));
       let randPosX = 0, randPosY = 0;
@@ -91,6 +92,19 @@ class GameBoard {
         randPosY = 0.1 + Math.random() * 0.3;
       }
       this._cloudPositions.push([randPosX, randPosY]);
+    }
+    this._smallMountains = 7;
+    this._mediumMountains = 5;
+    this._largeMountains = 4;
+    for (let i=0; i<this._smallMountains + this._mediumMountains + this._largeMountains; i++) {
+      let randPosX = 0;
+      let randVar = 0.25;
+      if (i < this._smallMountains) randVar = 0.125;
+      if (i < this._smallMountains) randPosX = (i + 0.5) / this._smallMountains + (Math.random() * randVar - randVar * 0.5);
+      else if (i < this._smallMountains + this._mediumMountains)
+        randPosX = (i - this._smallMountains + 0.5) / this._mediumMountains + (Math.random() * randVar - randVar * 0.5);
+      else randPosX = (i - this._smallMountains - this._mediumMountains + 0.5) / this._largeMountains + (Math.random() * randVar - randVar * 0.5);
+      this._mountainArr.push([randPosX, generateMountain(5 + Math.floor(Math.random() * 5), i >= 7)]);
     }
     this._canvasArr = [];
     this._width = Math.max(window.innerWidth, MIN_SIZE[0]);
@@ -237,7 +251,7 @@ class GameBoard {
     con.clearRect(0, 0, this._width, this._height);
     let bgGrad = con.createLinearGradient(0, 0, 0, this._height);
     bgGrad.addColorStop(0, 'rgba(76, 174, 236, 1)');
-    bgGrad.addColorStop(1, 'rgba(149, 217, 247, 1)');
+    bgGrad.addColorStop(1, 'rgba(188, 232, 251, 1)');
     con.fillStyle = bgGrad;
     con.fillRect(0, 0, this._width, this._height);
 
@@ -253,6 +267,17 @@ class GameBoard {
       else xp += aMove;
       xp %= this._width + 2 * cloud_sz; xp -= cloud_sz;
       drawCloudPath(con, this._actualClouds[i], xp);
+      con.fill();
+    }
+
+    const mountain_sz = Math.max(this._width, this._height) / 6;
+    const yp = this._height;
+    for (let i=0; i<this._mountainArr.length; i++) {
+      const xp = this._mountainArr[i][0] * this._width;
+      if (i < this._smallMountains) con.fillStyle = 'rgba(143, 213, 247, 1)';
+      else if (i < this._smallMountains + this._mediumMountains) con.fillStyle = 'rgba(120, 199, 243, 1)';
+      else con.fillStyle = 'rgba(76, 176, 241, 1)';
+      drawMountainPath(con, this._mountainArr[i][1], xp, yp, mountain_sz, mountain_sz * 1.3);
       con.fill();
     }
   }
