@@ -22,21 +22,51 @@
  * @param {boolean} [fallThrough] if set to true, snakes that fall out of the board will appear again on the other side of the board
  * @param {number} [disProgr] a number between 0 and 1 indicating the disappearing progress (1 = snake disappeared)
  * @param {any[]} [portation] an array indicating portation: [isBeingPorted, progr, startHeadX, startHeadY, endHeadX, endHeadY, port1X, port1Y, port2X, port2Y]
+ * @param {number} [targetProgr] a number between 0 and 1 indicating the disappearing progress when the snake reached the taregt (1 = snake disappeared)
  */
 function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset, borderArr, globalSlowTime, zoom, mvSnProg = -1, fallThrough = false,
-    disProgr = 0, portation = [false]) {
+    disProgr = 0, portation = [false], targetProgr = 0) {
+  let gdAniAteFruit = gd._aniAteFruit;
   disProgr *= disProgr;
   const con2 = getHiddenContext(can);
   if (typeof zoom === 'function') zoom(con2);
   const lightColor = lighten(color, 0.3);
   let len = partQ.length;
-  if (mvSnProg == 2 && !gd._aniAteFruit) len--;
+  if (mvSnProg == 2 && !gdAniAteFruit) len--;
 
-  for (let i=len-1; i>=0; i--) {
-    const [x, y] = partQ.get(i);
-    const off = calcOffset(offset, i, mvSnProg, gd, len, partQ, x, y);
-    gd._getAllOffsets(state, x, y, off, borderArr);
-  } // necessary for correctly filling borderArr
+  let colorSwitch = false; let noHead = false; const oldLen = len;
+  if (targetProgr > 0) {
+    const nPartQ = new Queue();
+    for (let i=0; i<partQ.length; i++) nPartQ.pushBack(partQ.get(i));
+    partQ = nPartQ;
+    mvSnProg = (targetProgr * len) % 1;
+    len = Math.ceil((1 - targetProgr) * len);
+    colorSwitch = (oldLen - len) % 2 ? true : false;
+    if (oldLen - len >= 1) noHead = true;
+    gdAniAteFruit = false;
+  }
+
+  const origOffset = offset;
+  if (targetProgr == 0 || len > 1) {
+    for (let i=len-1; i>=0; i--) {
+      const [x, y] = partQ.get(i);
+      const off = calcOffset(offset, i, mvSnProg, gd, len, partQ, x, y, gdAniAteFruit, targetProgr == 0, targetProgr > 0 ? origOffset : [0, 0]);
+      gd._getAllOffsets(state, x, y, off, borderArr);
+    } // necessary for correctly filling borderArr
+  }
+
+  const [orig_0x, orig_0y] = partQ.get(0);
+  const origOff = calcOffset(origOffset, 0, -1, gd, len, partQ, orig_0x, orig_0y, gdAniAteFruit);
+  const [orig_0ox, orig_0oy, orig_0drawAt] = gd._getAllOffsets(state, orig_0x, orig_0y, origOff, undefined, fallThrough);
+  if (targetProgr > 0) {
+    const fPos = partQ.getFront();
+    const [lastPos] = getPosDiff(partQ, 0, oldLen); // 0: left, 1: top, 2: right, 3: bottom
+    if (lastPos == 0) partQ.pushFront([fPos[0] + 1, fPos[1]]);
+    else if (lastPos == 1) partQ.pushFront([fPos[0], fPos[1] + 1]);
+    else if (lastPos == 2) partQ.pushFront([fPos[0] - 1, fPos[1]]);
+    else partQ.pushFront([fPos[0], fPos[1] - 1]);
+    len++;
+  }
 
   const drawArrA = []; const drawArrA_1 = [];
   const drawArrB = [];
@@ -56,7 +86,7 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
       }
       lx = x; ly = y;
     }
-    const off = calcOffset(offset, i, mvSnProg, gd, len, partQ, x, y, false);
+    const off = calcOffset(offset, i, mvSnProg, gd, len, partQ, x, y, gdAniAteFruit, false, targetProgr > 0 ? origOffset : [0, 0]);
     const [ox, oy, drawAt] = gd._getAllOffsets(state, x, y, off, undefined, fallThrough);
     drawArrA.push([[i, lastLastPos, lastPos, nextPos], [ox, oy, drawAt]]);
     drawArrA_1.push([x, y]);
@@ -80,7 +110,7 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
       }
       lx = x; ly = y;
     }
-    const off = calcOffset(offset, i, mvSnProg, gd, len, partQ, x, y);
+    const off = calcOffset(offset, i, mvSnProg, gd, len, partQ, x, y, gdAniAteFruit, true, targetProgr > 0 ? origOffset : [0, 0]);
     const [ox, oy, drawAt] = gd._getAllOffsets(state, x, y, off, undefined, fallThrough);
     drawArrB.push([[i, lastPos, nextPos, lA, tA, rA, bA], [ox, oy, drawAt]]);
   }
@@ -94,14 +124,16 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
     for (let i=0; i<drawArrA_1.length; i++) pA[k].push([drawArrA_1[i][0] + drawArrA[0][1][2][k][0] + offset[0], drawArrA_1[i][1] + drawArrA[0][1][2][k][1] + offset[1]]);
     scaleCon(con2, state, portation, pA[k], len, bCoord);
     for (let q=0; q<drawArrA.length; q++) {
+      if (targetProgr > 0 && len == 2 && q == 0) continue;
       const [[i, lastLastPos, lastPos, nextPos], [ox, oy, drawAt]] = drawArrA[q];
-      if (i % 2 == 0) con2.fillStyle = transparentize(color, trans * (1 - disProgr));
+      if ((i % 2 == 0 && !colorSwitch) || (i % 2 == 1 && colorSwitch)) con2.fillStyle = transparentize(color, trans * (1 - disProgr));
       else con2.fillStyle = transparentize(lightColor, trans * (1 - disProgr));
-      const [bx, by] = bCoord(ox + drawAt[k][0], oy + drawAt[k][1]);
+      let [bx, by] = bCoord(ox + drawAt[k][0], oy + drawAt[k][1]);
       if (mvSnProg >= 0 && mvSnProg <= 1) { // draw active snake movement
-        const [[fsx1, fsy1, fsx2, fsy2], [fmx1, fmy1, fmx2, fmy2], [fex1, fey1, fex2, fey2],
+        let [[fsx1, fsy1, fsx2, fsy2], [fmx1, fmy1, fmx2, fmy2], [fex1, fey1, fex2, fey2],
           [lsx1, lsy1, lsx2, lsy2], [lmx1, lmy1, lmx2, lmy2], [lex1, ley1, lex2, ley2], [cx, cy]]
           = getEndMoves(lastLastPos, lastPos, nextPos, bx, by, bSize, mvSnProg);
+        if (i == 0 && targetProgr > 0) [fex1, fey1, fex2, fey2] = [fmx1, fmy1, fmx2, fmy2] = [fsx1, fsy1, fsx2, fsy2];
         if (mvSnProg <= 0.5) { // first half of animation
           const t = mvSnProg / 0.5;
           con2.beginPath();
@@ -129,14 +161,6 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
           con2.closePath();
           con2.fill();
         }
-        if (i == 0) { // snake head indicator
-          con2.fillStyle = transparentize('rgba(255, 255, 255, 1)', trans * (1 - disProgr));
-          con2.beginPath();
-          con2.arc(cx, cy, bSize / 3, 0, 2 * Math.PI);
-          con2.closePath();
-          con2.fill();
-          con2.fillStyle = transparentize(color, trans * (1 - disProgr));
-        }
       } else { // draw snake (without active movement)
         con2.beginPath();
         con2.moveTo(bx - bSize / 2, by - bSize / 2);
@@ -150,14 +174,6 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
         else blockEndPath(con2, bx - bSize / 2, by + bSize / 2, bx - bSize / 2, by - bSize / 2);
         con2.closePath();
         con2.fill();
-        if (i == 0) { // snake head indicator
-          con2.fillStyle = transparentize('rgba(255, 255, 255, 1)', trans * (1 - disProgr));
-          con2.beginPath();
-          con2.arc(bx, by, bSize / 3, 0, 2 * Math.PI);
-          con2.closePath();
-          con2.fill();
-          con2.fillStyle = transparentize(color, trans * (1 - disProgr));
-        }
       }
     }
     restoreCon(con2, portation);
@@ -168,15 +184,15 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
   con3.fillStyle = 'rgba(255, 255, 255, 1)';
   for (let k=0; k<drawArrB[0][1][2].length; k++) { // draw snake with rounded corners
     scaleCon(con3, state, portation, pA[k], len, bCoord);
-    for (let q=0; q<drawArrB.length; q++) {
+    for (let q=0; q<(targetProgr > 0 ? drawArrB.length - 1 : drawArrB.length); q++) {
       const [[i, lastPos, nextPos, lA, tA, rA, bA], [ox, oy, drawAt]] = drawArrB[q];
       const [bx, by] = bCoord(ox + drawAt[k][0], oy + drawAt[k][1]);
       con3.beginPath();
       con3.moveTo(bx, by - bSize / 2 + tA);
       if ((i == 0 && i == len-1)
-          || (mvSnProg >= 0.5 && mvSnProg <= 1 && !gd._aniAteFruit && i == len - 2 && nextPos != 1 && nextPos != 2)
-          || (mvSnProg >= 0.5 && mvSnProg <= 1 && !gd._aniAteFruit && i == len - 1)
-          || (mvSnProg >= 0 && mvSnProg <= 0.5 && i == 1 && lastPos != 1 && lastPos != 2)
+          || (mvSnProg >= 0.5 && mvSnProg <= 1 && !gdAniAteFruit && i == len - 2 && nextPos != 1 && nextPos != 2)
+          || (mvSnProg >= 0.5 && mvSnProg <= 1 && !gdAniAteFruit && i == len - 1)
+          || ((mvSnProg >= 0 && mvSnProg <= 0.5 || targetProgr > 0) && i == 1 && lastPos != 1 && lastPos != 2)
           || (mvSnProg >= 0 && mvSnProg <= 0.5 && i == 0)
           || (i == len-1 && nextPos != 1 && nextPos != 2)
           || (i == 0 && lastPos != 1 && lastPos != 2)
@@ -185,9 +201,9 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
       else
         con3.lineTo(bx + bSize / 2 + rA, by - bSize / 2 + tA);
       if ((i == 0 && i == len-1)
-          || (mvSnProg >= 0.5 && mvSnProg <= 1 && !gd._aniAteFruit && i == len - 2 && nextPos != 2 && nextPos != 3)
-          || (mvSnProg >= 0.5 && mvSnProg <= 1 && !gd._aniAteFruit && i == len - 1)
-          || (mvSnProg >= 0 && mvSnProg <= 0.5 && i == 1 && lastPos != 2 && lastPos != 3)
+          || (mvSnProg >= 0.5 && mvSnProg <= 1 && !gdAniAteFruit && i == len - 2 && nextPos != 2 && nextPos != 3)
+          || (mvSnProg >= 0.5 && mvSnProg <= 1 && !gdAniAteFruit && i == len - 1)
+          || ((mvSnProg >= 0 && mvSnProg <= 0.5 || targetProgr > 0) && i == 1 && lastPos != 2 && lastPos != 3)
           || (mvSnProg >= 0 && mvSnProg <= 0.5 && i == 0)
           || (i == len-1 && nextPos != 2 && nextPos != 3)
           || (i == 0 && lastPos != 2 && lastPos != 3)
@@ -196,9 +212,9 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
       else
         con3.lineTo(bx + bSize / 2 + rA, by + bSize / 2 + bA);
       if ((i == 0 && i == len-1)
-          || (mvSnProg >= 0.5 && mvSnProg <= 1 && !gd._aniAteFruit && i == len - 2 && nextPos != 3 && nextPos != 0)
-          || (mvSnProg >= 0.5 && mvSnProg <= 1 && !gd._aniAteFruit && i == len - 1)
-          || (mvSnProg >= 0 && mvSnProg <= 0.5 && i == 1 && lastPos != 3 && lastPos != 0)
+          || (mvSnProg >= 0.5 && mvSnProg <= 1 && !gdAniAteFruit && i == len - 2 && nextPos != 3 && nextPos != 0)
+          || (mvSnProg >= 0.5 && mvSnProg <= 1 && !gdAniAteFruit && i == len - 1)
+          || ((mvSnProg >= 0 && mvSnProg <= 0.5 || targetProgr > 0) && i == 1 && lastPos != 3 && lastPos != 0)
           || (mvSnProg >= 0 && mvSnProg <= 0.5 && i == 0)
           || (i == len-1 && nextPos != 3 && nextPos != 0)
           || (i == 0 && lastPos != 3 && lastPos != 0)
@@ -207,9 +223,9 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
       else
         con3.lineTo(bx - bSize / 2 + lA, by + bSize / 2 + bA);
       if ((i == 0 && i == len-1)
-          || (mvSnProg >= 0.5 && mvSnProg <= 1 && !gd._aniAteFruit && i == len - 2 && nextPos != 0 && nextPos != 1)
-          || (mvSnProg >= 0.5 && mvSnProg <= 1 && !gd._aniAteFruit && i == len - 1)
-          || (mvSnProg >= 0 && mvSnProg <= 0.5 && i == 1 && lastPos != 0 && lastPos != 1)
+          || (mvSnProg >= 0.5 && mvSnProg <= 1 && !gdAniAteFruit && i == len - 2 && nextPos != 0 && nextPos != 1)
+          || (mvSnProg >= 0.5 && mvSnProg <= 1 && !gdAniAteFruit && i == len - 1)
+          || ((mvSnProg >= 0 && mvSnProg <= 0.5 || targetProgr > 0) && i == 1 && lastPos != 0 && lastPos != 1)
           || (mvSnProg >= 0 && mvSnProg <= 0.5 && i == 0)
           || (i == len-1 && nextPos != 0 && nextPos != 1)
           || (i == 0 && lastPos != 0 && lastPos != 1)
@@ -228,6 +244,44 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
   con2.globalCompositeOperation = 'destination-in';
   drawHiddenCanvas(con2, 1); // draw snake with rounded corners
   con2.globalCompositeOperation = 'source-over';
+
+  if (typeof zoom === 'function') zoom(con2);
+  for (let k=0; k<drawArrA[0][1][2].length; k++) { // draw snake head
+    pA[k] = [];
+    for (let i=0; i<drawArrA_1.length; i++) pA[k].push([drawArrA_1[i][0] + drawArrA[0][1][2][k][0] + offset[0], drawArrA_1[i][1] + drawArrA[0][1][2][k][1] + offset[1]]);
+    scaleCon(con2, state, portation, pA[k], len, bCoord);
+
+    const [[i, lastLastPos, lastPos, nextPos], [ox, oy, drawAt]] = drawArrA[ drawArrA.length - 1 ];
+    let [bx, by] = bCoord(ox + drawAt[k][0], oy + drawAt[k][1]);
+    if (mvSnProg >= 0 && mvSnProg <= 1) { // draw active snake movement
+      let [[fsx1, fsy1, fsx2, fsy2], [fmx1, fmy1, fmx2, fmy2], [fex1, fey1, fex2, fey2],
+        [lsx1, lsy1, lsx2, lsy2], [lmx1, lmy1, lmx2, lmy2], [lex1, ley1, lex2, ley2], [cx, cy]]
+        = getEndMoves(lastLastPos, lastPos, nextPos, bx, by, bSize, mvSnProg);
+      if (!noHead) { // snake head indicator
+        let targetTrans = 1;
+        if (targetProgr > 0) { [cx, cy] = bCoord(orig_0ox + orig_0drawAt[k][0], orig_0oy + orig_0drawAt[k][1]); targetTrans = 1 - mvSnProg; }
+        con2.fillStyle = transparentize('rgba(255, 255, 255, 1)', trans * (1 - disProgr) * targetTrans);
+        con2.beginPath();
+        con2.arc(cx, cy, bSize / 3, 0, 2 * Math.PI);
+        con2.closePath();
+        con2.fill();
+        con2.fillStyle = transparentize(color, trans * (1 - disProgr));
+      }
+    } else { // draw snake (without active movement)
+      if (!noHead) { // snake head indicator
+        let targetTrans = 1;
+        if (targetProgr > 0) { [bx, by] = bCoord(orig_0ox + orig_0drawAt[k][0], orig_0oy + orig_0drawAt[k][1]); targetTrans = 1 - mvSnProg; }
+        con2.fillStyle = transparentize('rgba(255, 255, 255, 1)', trans * (1 - disProgr) * targetTrans);
+        con2.beginPath();
+        con2.arc(bx, by, bSize / 3, 0, 2 * Math.PI);
+        con2.closePath();
+        con2.fill();
+        con2.fillStyle = transparentize(color, trans * (1 - disProgr));
+      }
+    }
+    restoreCon(con2, portation);
+  }
+  if (typeof zoom === 'function') con2.restore();
 
   if (typeof zoom === 'function') con3.restore();
   if (disProgr > 0) {
@@ -392,12 +446,14 @@ function blockEndPath(con, sx, sy, tx, ty) {
  * @param {Queue} partQ a queue with the body parts of the snake
  * @param {number} x the x coordinate of the current body part
  * @param {number} y the y coordinate of the current body part
+ * @param {boolean} gdAniAteFruit whether the moving snake ate a fruit
  * @param {boolean} [specialHeadTreatment] whether to calculate special head offset coordinates based on the progress of the snake movement
+ * @param {number[]} [additionalOffset] an additional offset to add in all cases
  * @return {number[]} the new calculated offset
  */
-function calcOffset(off, i, mvSnProg, gd, len, partQ, x, y, specialHeadTreatment = true) {
+function calcOffset(off, i, mvSnProg, gd, len, partQ, x, y, gdAniAteFruit, specialHeadTreatment = true, additionalOffset = [0, 0]) {
   if ((i != 0 || !specialHeadTreatment) && mvSnProg >= 0 && mvSnProg <= 1) {
-    if (i == len - 1 && !gd._aniAteFruit) {
+    if (i == len - 1 && !gdAniAteFruit) {
       let [nx, ny] = partQ.get(i-1);
       if (gd._fallThrough) {
         [nx, ny] = gd._checkPosChange([x, y], [nx, ny]);
@@ -405,7 +461,7 @@ function calcOffset(off, i, mvSnProg, gd, len, partQ, x, y, specialHeadTreatment
       off = [(nx - x) * mvSnProg, (ny - y) * mvSnProg];
     } else off = [0, 0];
   }
-  return off;
+  return [off[0] + additionalOffset[0], off[1] + additionalOffset[1]];
 }
 
 /**

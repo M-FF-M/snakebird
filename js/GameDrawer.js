@@ -40,7 +40,7 @@ const BLOCK_COLOR_MAP = { // A, B, C, D, E colors are the same as in the real ga
 };
 
 /**
- * Specifies how long one animation step (moving one grid cell) takes (in milliseconds)
+ * Specifies how long one animation step (moving one grid cell) takes (in milliseconds), default is 150
  * @type {number}
  */
 const STEP_LENGTH = 150;
@@ -462,10 +462,11 @@ class GameDrawer {
     let globalSlowTime = ((new Date()).getTime() % 10000) / 10000;
     if (this._noCyclicAni) globalTime = globalSlowTime = 0;
 
-    const drawSnake = []; const snakeDeathProg = []; const snakePortation = [];
+    const drawSnake = []; const snakeDeathProg = []; const snakePortation = []; const snakeTargetProgr = [];
     const snakeOffsets = [];
     for (let i=0; i<state.snakes.length; i++) {
       drawSnake[i] = true; snakeDeathProg[i] = 0; snakePortation[i] = [false];
+      snakeTargetProgr[i] = 0;
       snakeOffsets.push([0, 0]);
     }
     const drawBlock = []; const blockDeathProg = []; const blockPortation = [];
@@ -503,6 +504,9 @@ class GameDrawer {
           if (nextPos[0] < -10 && nextPos[1] < -10) {
             if (isSnake) drawSnake[ib] = false;
             else drawBlock[ib] = false;
+          }
+          if (isSnake && lastPos.length == 3 && lastPos[2] == 2) {
+            snakeTargetProgr[i] = cStepT;
           }
           if (this._fallThrough && lastPos.length != 6 && lastPos.length != 7) {
             nextPos = this._checkPosChange(lastPos, nextPos);
@@ -593,11 +597,11 @@ class GameDrawer {
         if (this._animationRunning && i == this._aniSnakeMoveInd)
           drawSnakebird(this, state, con, this._canvas, bSize, bCoord, snakes[i], COLOR_MAP[state.snakeToCharacter[i]],
             snakeOffsets[i], borderArr, globalSlowTime, this._applyZoom, cStep == 0 ? cStepT : 2, this._fallThrough,
-            snakeDeathProg[i], snakePortation[i]);
+            snakeDeathProg[i], snakePortation[i], snakeTargetProgr[i]);
         else
           drawSnakebird(this, state, con, this._canvas, bSize, bCoord, snakes[i], COLOR_MAP[state.snakeToCharacter[i]],
             snakeOffsets[i], borderArr, globalSlowTime, this._applyZoom, -1, this._fallThrough,
-            snakeDeathProg[i], snakePortation[i]);
+            snakeDeathProg[i], snakePortation[i], snakeTargetProgr[i]);
       }
     }
 
