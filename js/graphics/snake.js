@@ -14,7 +14,8 @@
  * @param {number[]} offset the offset the snake should be moved by
  * @param {number[][]} borderArr an array that will be modified to reflect whether a snake is close
  * to the game board border
- * @param {number} globalSlowTime a number between 0 and 1 that is used for cyclic animations
+ * @param {number} globalTime a number between 0 and 1 that is used for cyclic animations
+ * @param {number} globalSlowTime a number between 0 and 1 that is used for slow cyclic animations
  * @param {Function} [zoom] a function that applies a zoom and a translation to the context
  * @param {number} [mvSnProg] if not -1, either between 0 and 1, specifying the progress of the first
  * movement of the snake's head or 2, specifying that the snake already moved its head (if it is -1,
@@ -24,8 +25,10 @@
  * @param {any[]} [portation] an array indicating portation: [isBeingPorted, progr, startHeadX, startHeadY, endHeadX, endHeadY, port1X, port1Y, port2X, port2Y]
  * @param {number} [targetProgr] a number between 0 and 1 indicating the disappearing progress when the snake reached the taregt (1 = snake disappeared)
  */
-function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset, borderArr, globalSlowTime, zoom, mvSnProg = -1, fallThrough = false,
-    disProgr = 0, portation = [false], targetProgr = 0) {
+function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset, borderArr, globalTime, globalSlowTime, zoom, mvSnProg = -1,
+    fallThrough = false, disProgr = 0, portation = [false], targetProgr = 0) {
+  const osc = Math.sin(globalTime * 2 * Math.PI);
+  const oscSlow = Math.sin(globalSlowTime * 2 * Math.PI + getAddVar(color));
   let gdAniAteFruit = gd._aniAteFruit;
   disProgr *= disProgr;
   const con2 = getHiddenContext(can);
@@ -33,6 +36,17 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
   const lightColor = lighten(color, 0.3);
   let len = partQ.length;
   if (mvSnProg == 2 && !gdAniAteFruit) len--;
+
+  let headAngle = 0; let topBeakAngle = (0.05 + oscSlow * 0.05) * Math.PI; let bottomBeakAngle = (0.1 + osc * 0.05) * Math.PI;
+  let topBeakLength = 1; let bottomBeakLength = 1; let hairAngle = (-0.2 + osc * 0.05) * Math.PI; let eyelidsClosed = 0;
+  if (mvSnProg >= 0 && mvSnProg <= 1 && gdAniAteFruit) {
+    const beakOsc = Math.sin(mvSnProg * Math.PI);
+    topBeakAngle -= beakOsc * 0.2 * Math.PI;
+    bottomBeakAngle += beakOsc * 0.2 * Math.PI;
+  }
+  if (oscSlow > 0.98) {
+    eyelidsClosed = (oscSlow - 0.98) / 0.02;
+  }
 
   let colorSwitch = false; let noHead = false; const oldLen = len;
   if (targetProgr > 0) {
@@ -90,6 +104,12 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
     const [ox, oy, drawAt] = gd._getAllOffsets(state, x, y, off, undefined, fallThrough);
     drawArrA.push([[i, lastLastPos, lastPos, nextPos], [ox, oy, drawAt]]);
     drawArrA_1.push([x, y]);
+    if (i == 0 && (len > 2 || (len > 1 && (mvSnProg < -0.5 || mvSnProg > 1.5)))) {
+      if (lastPos == 0) headAngle = 0;
+      else if (lastPos == 1) headAngle = 0.5 * Math.PI;
+      else if (lastPos == 2) headAngle = Math.PI;
+      else headAngle = -0.5 * Math.PI;
+    }
   }
   drawArrA_1.reverse();
 
@@ -147,6 +167,11 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
           con2.lineTo((1 - t) * fsx1 + t * fmx1, (1 - t) * fsy1 + t * fmy1);
           con2.closePath();
           con2.fill();
+          if (i == 0 && len > 2) {
+            headAngle = 0.5 * Math.PI + Math.atan2(
+                                                    -((1 - t) * lsy1 + t * lmy1) + ((1 - t) * lsy2 + t * lmy2),
+                                                    -((1 - t) * lsx1 + t * lmx1) + ((1 - t) * lsx2 + t * lmx2));
+          }
         } else { // second half of animation
           const t = (mvSnProg - 0.5) / 0.5;
           con2.beginPath();
@@ -160,6 +185,11 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
           con2.lineTo((1 - t) * fmx1 + t * fex1, (1 - t) * fmy1 + t * fey1);
           con2.closePath();
           con2.fill();
+          if (i == 0 && len > 2) {
+            headAngle = 0.5 * Math.PI + Math.atan2(
+                                                    -((1 - t) * lmy1 + t * ley1) + ((1 - t) * lmy2 + t * ley2),
+                                                    -((1 - t) * lmx1 + t * lex1) + ((1 - t) * lmx2 + t * lex2));
+          }
         }
       } else { // draw snake (without active movement)
         con2.beginPath();
@@ -245,6 +275,7 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
   drawHiddenCanvas(con2, 1); // draw snake with rounded corners
   con2.globalCompositeOperation = 'source-over';
 
+  if (state.targetXDistance > 0) headAngle += Math.PI;
   if (typeof zoom === 'function') zoom(con2);
   for (let k=0; k<drawArrA[0][1][2].length; k++) { // draw snake head
     pA[k] = [];
@@ -257,27 +288,124 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
       let [[fsx1, fsy1, fsx2, fsy2], [fmx1, fmy1, fmx2, fmy2], [fex1, fey1, fex2, fey2],
         [lsx1, lsy1, lsx2, lsy2], [lmx1, lmy1, lmx2, lmy2], [lex1, ley1, lex2, ley2], [cx, cy]]
         = getEndMoves(lastLastPos, lastPos, nextPos, bx, by, bSize, mvSnProg);
-      if (!noHead) { // snake head indicator
-        let targetTrans = 1;
-        if (targetProgr > 0) { [cx, cy] = bCoord(orig_0ox + orig_0drawAt[k][0], orig_0oy + orig_0drawAt[k][1]); targetTrans = 1 - mvSnProg; }
-        con2.fillStyle = transparentize('rgba(255, 255, 255, 1)', trans * (1 - disProgr) * targetTrans);
-        con2.beginPath();
-        con2.arc(cx, cy, bSize / 3, 0, 2 * Math.PI);
-        con2.closePath();
-        con2.fill();
-        con2.fillStyle = transparentize(color, trans * (1 - disProgr));
+      [bx, by] = [cx, cy];
+    }
+    if (!noHead) { // snake head indicator
+      let xSign = 1; // look right
+      if (state.targetXDistance > 0) xSign = -1; // look left
+
+      let targetTrans = 1;
+      if (targetProgr > 0) { [bx, by] = bCoord(orig_0ox + orig_0drawAt[k][0], orig_0oy + orig_0drawAt[k][1]); targetTrans = 1 - mvSnProg; }
+      con2.save();
+      con2.translate(bx, by); con2.rotate(headAngle);
+
+      con2.fillStyle = transparentize(color, trans * (1 - disProgr) * targetTrans);
+      const leftSin = Math.sin(hairAngle - 0.08 * Math.PI); const leftCos = Math.cos(hairAngle - 0.08 * Math.PI);
+      const rightSin = Math.sin(hairAngle + 0.05 * Math.PI); const rightCos = Math.cos(hairAngle + 0.05 * Math.PI);
+      const hCoords = [
+        [-bSize * 0.12 * xSign, -0.5 * bSize + 1],
+        [-bSize * 0.12 * xSign, -0.67 * bSize + 1],
+        [(-0.07 + leftCos * 0.4) * bSize * xSign, (-0.5 + leftSin * 0.4) * bSize + 1],
+        [0, -0.57 * bSize + 1],
+        [-bSize * 0.02 * xSign, -0.5 * bSize + 1],
+        [0, -0.5 * bSize + 1],
+        [0, -0.62 * bSize + 1],
+        [(0.05 + rightCos * 0.3) * bSize * xSign, (-0.5 + rightSin * 0.3) * bSize + 1],
+        [bSize * 0.1 * xSign, -0.52 * bSize + 1],
+        [bSize * 0.1 * xSign, -0.5 * bSize + 1],
+        [-bSize * 0.12 * xSign, -0.5 * bSize + 1]
+      ];
+      const hControls = [
+        [0.4 * Math.PI, -0.45 * Math.PI, 1, 1],
+        [0.15 * Math.PI, 0.05 * Math.PI, 1, 0.7],
+        [0.1 * Math.PI, -0.7 * Math.PI, 1, 1.3],
+        [0.65 * Math.PI, -0.45 * Math.PI, 1, 1],
+        [0.5 * Math.PI, -0.5 * Math.PI, 1, 1],
+        [0.45 * Math.PI, -0.35 * Math.PI, 1, 1],
+        [0.35 * Math.PI, 0.05 * Math.PI, 1, 0.5],
+        [0.1 * Math.PI, -0.55 * Math.PI, 1.5, 1],
+        [0.55 * Math.PI, -0.45 * Math.PI, 1, 1],
+        [0.5 * Math.PI, -0.5 * Math.PI, 1, 1]
+      ];
+      if (xSign < 0) {
+        hCoords.reverse(); hControls.reverse();
+        for (let i=0; i<hControls.length; i++) {
+          let tmpA = hControls[i][0]; let tmpB = hControls[i][2];
+          hControls[i][0] = -hControls[i][1];
+          hControls[i][1] = -tmpA;
+          hControls[i][2] = hControls[i][3];
+          hControls[i][3] = tmpB;
+        }
       }
-    } else { // draw snake (without active movement)
-      if (!noHead) { // snake head indicator
-        let targetTrans = 1;
-        if (targetProgr > 0) { [bx, by] = bCoord(orig_0ox + orig_0drawAt[k][0], orig_0oy + orig_0drawAt[k][1]); targetTrans = 1 - mvSnProg; }
-        con2.fillStyle = transparentize('rgba(255, 255, 255, 1)', trans * (1 - disProgr) * targetTrans);
-        con2.beginPath();
-        con2.arc(bx, by, bSize / 3, 0, 2 * Math.PI);
-        con2.closePath();
-        con2.fill();
-        con2.fillStyle = transparentize(color, trans * (1 - disProgr));
+      con2.beginPath(); // hair
+      for (let i=0; i<hCoords.length; i++) {
+        if (i == 0) con2.moveTo(hCoords[i][0], hCoords[i][1]);
+        else bezierCurve(con2, hCoords[i - 1][0], hCoords[i - 1][1], hCoords[i][0], hCoords[i][1], hControls[i - 1][0], hControls[i - 1][1],
+          hControls[i - 1][2], hControls[i - 1][3]);
       }
+      con2.closePath();
+      con2.fill();
+
+      con2.translate(bSize * 0.1 * xSign, bSize * 0.05);
+
+      con2.fillStyle = transparentize('rgba(255, 255, 255, 1)', trans * (1 - disProgr) * targetTrans);
+      con2.beginPath(); // left eye
+      con2.moveTo(-bSize / 6, -bSize * 0.4);
+      bezierCurve(con2, -bSize / 6, -bSize * 0.4, -bSize / 6, -bSize * 0.05, 0, 0, 1, 1);
+      bezierCurve(con2, -bSize / 6, -bSize * 0.05, -bSize / 6, -bSize * 0.4, 0, 0, 1, 1);
+      con2.closePath(); con2.fill();
+      con2.beginPath(); // right eye
+      con2.moveTo(bSize / 6, -bSize * 0.4);
+      bezierCurve(con2, bSize / 6, -bSize * 0.4, bSize / 6, -bSize * 0.05, 0, 0, 1, 1);
+      bezierCurve(con2, bSize / 6, -bSize * 0.05, bSize / 6, -bSize * 0.4, 0, 0, 1, 1);
+      con2.closePath(); con2.fill();
+
+      con2.fillStyle = transparentize('rgba(0, 0, 0, 1)', trans * (1 - disProgr) * targetTrans);
+      con2.beginPath(); // left eye pupil
+      con2.arc(-bSize / 6, -bSize * 0.17, bSize * 0.08, 0, 2 * Math.PI);
+      con2.closePath();
+      con2.fill();
+      con2.beginPath(); // right eye pupil
+      con2.arc(bSize / 6, -bSize * 0.17, bSize * 0.08, 0, 2 * Math.PI);
+      con2.closePath();
+      con2.fill();
+      if (eyelidsClosed > 0) {
+        con2.fillStyle = transparentize(color, trans * (1 - disProgr) * targetTrans);
+        const eyeHeight = eyelidsClosed * (bSize * 0.35 + 4) * 0.5;
+        con2.fillRect(-bSize / 3, -bSize * 0.4 - 1, 2 * bSize / 3, eyeHeight);
+        con2.fillRect(-bSize / 3, -bSize * 0.05 + 1 - eyeHeight, 2 * bSize / 3, eyeHeight);
+      }
+
+      con2.translate(0, bSize * 0.05);
+      const topSin = Math.sin(topBeakAngle); const topCos = Math.cos(topBeakAngle);
+      const bottomSin = Math.sin(bottomBeakAngle); const bottomCos = Math.cos(bottomBeakAngle);
+      con2.fillStyle = transparentize('rgba(255, 187, 3, 1)', trans * (1 - disProgr) * targetTrans);
+      const coords = [
+        [topSin * bSize * 0.2 * xSign, -topCos * bSize * 0.2],
+        [topCos * bSize * 0.3 * topBeakLength * xSign, topSin * bSize * 0.3 * topBeakLength],
+        [0, 0],
+        [bottomCos * bSize * 0.25 * bottomBeakLength * xSign, bottomSin * bSize * 0.25 * bottomBeakLength],
+        [-bottomSin * bSize * 0.15 * xSign, bottomCos * bSize * 0.15],
+        [topSin * bSize * 0.2 * xSign, -topCos * bSize * 0.2]
+      ];
+      const controls = [
+        [0.35 * Math.PI, -0.35 * Math.PI],
+        [0.55 * Math.PI, -0.55 * Math.PI],
+        [0.45 * Math.PI, -0.45 * Math.PI],
+        [0.35 * Math.PI, -0.35 * Math.PI],
+        [0.2 * Math.PI, -0.2 * Math.PI]
+      ];
+      if (xSign < 0) { coords.reverse(); controls.reverse(); }
+      con2.beginPath(); // beak
+      for (let i=0; i<coords.length; i++) {
+        if (i == 0) con2.moveTo(coords[i][0], coords[i][1]);
+        else bezierCurve(con2, coords[i - 1][0], coords[i - 1][1], coords[i][0], coords[i][1], controls[i - 1][0], controls[i - 1][1]);
+      }
+      con2.closePath();
+      con2.fill();
+
+      con2.fillStyle = transparentize(color, trans * (1 - disProgr));
+      con2.restore();
     }
     restoreCon(con2, portation);
   }
@@ -324,6 +452,20 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
   drawHiddenCanvas(con, 0, zoom); // draw snake on main canvas
 
   if (typeof zoom === 'function') con3.restore();
+}
+
+/**
+ * Returns a number to add to globalSlowTime based on the snake color
+ * @param {string} color the color of the snake
+ * @return {number} the number to add to globalSlowTime
+ */
+function getAddVar(color) {
+  let ret = 0;
+  for (let i=0; i<color.length; i++) {
+    if (color[i].search(/[0-9]/) != -1)
+      ret += parseInt(color[i]);
+  }
+  return ret;
 }
 
 /**

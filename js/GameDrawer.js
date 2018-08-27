@@ -596,11 +596,11 @@ class GameDrawer {
       if (drawSnake[i]) {
         if (this._animationRunning && i == this._aniSnakeMoveInd)
           drawSnakebird(this, state, con, this._canvas, bSize, bCoord, snakes[i], COLOR_MAP[state.snakeToCharacter[i]],
-            snakeOffsets[i], borderArr, globalSlowTime, this._applyZoom, cStep == 0 ? cStepT : 2, this._fallThrough,
+            snakeOffsets[i], borderArr, globalTime, globalSlowTime, this._applyZoom, cStep == 0 ? cStepT : 2, this._fallThrough,
             snakeDeathProg[i], snakePortation[i], snakeTargetProgr[i]);
         else
           drawSnakebird(this, state, con, this._canvas, bSize, bCoord, snakes[i], COLOR_MAP[state.snakeToCharacter[i]],
-            snakeOffsets[i], borderArr, globalSlowTime, this._applyZoom, -1, this._fallThrough,
+            snakeOffsets[i], borderArr, globalTime, globalSlowTime, this._applyZoom, -1, this._fallThrough,
             snakeDeathProg[i], snakePortation[i], snakeTargetProgr[i]);
       }
     }

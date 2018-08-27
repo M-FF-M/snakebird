@@ -216,6 +216,11 @@ class GameState {
      * @type {number[][]}
      */
     this.field = [];
+    /**
+     * The sum of the (signed) x distances of all the snakes' heads to the target
+     * @type {number}
+     */
+    this.targetXDistance = 0;
     if (typeof stateStr === 'string') {
       for (let x=0; x<this.width; x++) {
         this.field[x] = [];
@@ -270,6 +275,7 @@ class GameState {
       }
       for (let i=0; i<this.snakes.length; i++) {
         let [cx, cy] = this.snakes[i].getBack();
+        this.targetXDistance += cx - this.target[0];
         while (true) {
           if (this.getStrVal(cx + 1, cy, WRAP_AROUND) == '<') {
             cx++; cx %= this.width; this.snakes[i].pushBack([cx, cy]);
@@ -310,6 +316,7 @@ class GameState {
     ret.height = this.height;
     ret.width = this.width;
     ret.gravity = this.gravity;
+    ret.targetXDistance = this.targetXDistance;
     for (let i=0; i<this.snakes.length; i++) {
       ret.snakes[i] = new Queue();
       for (let k=0; k<this.snakes[i].length; k++)
