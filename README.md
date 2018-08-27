@@ -9,7 +9,8 @@ and can be bought...
 
 This __work is still in progress__. You can currently play a single level at
 https://m-ff-m.github.io/snakebird/ or clone the repository and open index.html.
-You can also change the level number in index.html (0-51 available for now).
+You can also change the level number in index.html, line 59 (std_levels[0] to
+std_levels[51] available for now).
 
 ## Original vs. JS implementation
 
@@ -17,6 +18,6 @@ Original:
 
 ![Original Snakebird game](Original.png "Original game graphics")
 
-JS implementation (not yet finished):
+JS implementation:
 
 ![Reimplemented Snakebird game](Fake.png "JS game graphics")
