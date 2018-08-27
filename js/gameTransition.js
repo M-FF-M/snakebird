@@ -217,33 +217,48 @@ function gameTransition(gameState, snake, direction, fallThrough = false, gravit
       fallThrough ? WRAP_AROUND : BLOCK_LEFT_RIGHT(gravity)); // value at new position
     if (val > 0) { // snake or block blocks the new position -- try to move them
       snakesStatic[snIdx] = true;
-      if (val == SNAKE(snIdx) && !(allowMovingWithoutSpace && allowTailBiting)) return null;
       const val2 = val >= 32 ? GET_BLOCK(val) + snakesStatic.length : GET_SNAKE(val);
+      let skipCheck = false;
+      if (val == SNAKE(snIdx) && allowMovingWithoutSpace && allowTailBiting) {
+        const lastpos = cs.getBack();
+        if (lastpos[0] != nx || lastpos[1] != ny) return null;
+        snakesStatic[snIdx] = false; skipCheck = true;
+      } else if (val == SNAKE(snIdx)) return null;
       if (allowMovingWithoutSpace) {
         const lastpos = cs.getBack(); // the snake didn't eat a fruit --> already remove last body part
                                       // to make room for other objects
         gameState.setStrVal(lastpos[0], lastpos[1], '.');
         gameState.setVal(lastpos[0], lastpos[1], EMPTY);
       }
-      const res = move(gameState, new Map(), snakesStatic, blocksStatic, direction, gravity, fallThrough, val2);
-      if (res[0] == ALL_STATIC) return null;
-      if (gameState.getVal(nx, ny, fallThrough ? WRAP_AROUND : BLOCK_LEFT_RIGHT(gravity)) > 0) 
-        return null; // new position is still blocked
-      if (res[0] == ENDLESS_LOOP) throw new Error('There can\'t be an endless loop after the first move');
-      if (res[0] == GAME_WON) throw new Error('The game can\'t have been won after one move when the first move was to move other objects');
-      retArr.push(res[1]);
-      nSnIdx = res[4][snIdx]; // the snake index might have changed due to a snake entering the target
-      moveSnake(cs, nx, ny, snIdx, nSnIdx, false, !allowMovingWithoutSpace);
-      if (res[0] == OUT_OF_BOARD_ONTO_SPIKE) {
-        reinsertTargetAndPortals(gameState);
-        if (moveInfo) return [ateFruit, OUT_OF_BOARD_ONTO_SPIKE, retArr, gameState];
-        else return gameState;
+      if (!skipCheck) {
+        const res = move(gameState, new Map(), snakesStatic, blocksStatic, direction, gravity, fallThrough, val2);
+        if (res[0] == ALL_STATIC) return null;
+        if (gameState.getVal(nx, ny, fallThrough ? WRAP_AROUND : BLOCK_LEFT_RIGHT(gravity)) > 0) 
+          return null; // new position is still blocked
+        if (res[0] == ENDLESS_LOOP) throw new Error('There can\'t be an endless loop after the first move');
+        if (res[0] == GAME_WON) throw new Error('The game can\'t have been won after one move when the first move was to move other objects');
+        retArr.push(res[1]);
+        nSnIdx = res[4][snIdx]; // the snake index might have changed due to a snake entering the target
+        moveSnake(cs, nx, ny, snIdx, nSnIdx, false, !allowMovingWithoutSpace);
+        if (res[0] == OUT_OF_BOARD_ONTO_SPIKE) {
+          reinsertTargetAndPortals(gameState);
+          if (moveInfo) return [ateFruit, OUT_OF_BOARD_ONTO_SPIKE, retArr, gameState];
+          else return gameState;
+        }
+        addToBlockOut(res[2]);
+        for (let i=0; i<blocksStatic.length; i++) // reset static array
+          if (!res[2].includes(i)) blocksStatic[i] = false; // caution: array might contain blocks that fell out of the board
+        for (let i=0; i<snakesStatic.length; i++) // reset static array
+          snakesStatic[i] = false; // snakes that fell onto the target will have been removed from the array already
+      } else {
+        const res = move(gameState, new Map(), snakesStatic, blocksStatic, [0, 0], gravity, fallThrough, val2);
+        retArr.push(res[1]);
+        moveSnake(cs, nx, ny, snIdx, nSnIdx, false, !allowMovingWithoutSpace);
+        for (let i=0; i<blocksStatic.length; i++) // reset static array
+          if (!res[2].includes(i)) blocksStatic[i] = false; // caution: array might contain blocks that fell out of the board
+        for (let i=0; i<snakesStatic.length; i++) // reset static array
+          snakesStatic[i] = false; // snakes that fell onto the target will have been removed from the array already
       }
-      addToBlockOut(res[2]);
-      for (let i=0; i<blocksStatic.length; i++) // reset static array
-        if (!res[2].includes(i)) blocksStatic[i] = false; // caution: array might contain blocks that fell out of the board
-      for (let i=0; i<snakesStatic.length; i++) // reset static array
-        snakesStatic[i] = false; // snakes that fell onto the target will have been removed from the array already
     } else if (val == EMPTY || val == TARGET || val == PORTAL) {
       pushCurPos();
       moveSnake(cs, nx, ny, snIdx, snIdx, false);
