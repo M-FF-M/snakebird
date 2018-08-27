@@ -14,12 +14,13 @@
  * to the game board border
  * @param {GameDrawer} gd the game drawer calling this method
  * @param {object} infoObj an info object returned by calculateGraphicsInfo()
+ * @param {number} [transparency] a number betwenn 0 and 1 indicating the transparency of the block
  * @param {boolean} [fallThrough] if set to true, snakes that fall out of the board will appear again on the other side of the board
  * @param {number} [disProgr] a number between 0 and 1 indicating the disappearing progress (1 = block disappeared)
  * @param {any[]} [portation] an array indicating portation: [isBeingPorted, progr, startHeadX, startHeadY, endHeadX, endHeadY, port1X, port1Y, port2X, port2Y]
  */
 function drawBlockFront(state, con, bSize, bCoord, partQ, color, offset, borderArr, gd,
-    infoObj, fallThrough = false, disProgr = 0, portation = [false]) {
+    infoObj, transparency = 1, fallThrough = false, disProgr = 0, portation = [false]) {
   const [x0, y0] = [...partQ.get(0)];
   for (let i=0; i<partQ.length; i++) {
     const [x, y] = partQ.get(i);
@@ -57,7 +58,7 @@ function drawBlockFront(state, con, bSize, bCoord, partQ, color, offset, borderA
     for (let q=0; q<drawArr.length; q++) {
       const [[ax, ay], [ox, oy, drawAt]] = drawArr[q];
       if (readVal(ax, ay) == 1) { // foreground
-        con.fillStyle = transparentize(color, (1 - disProgr) * trans);
+        con.fillStyle = transparentize(color, (1 - disProgr) * trans * transparency);
         const [bx, by] = bCoord(ox + drawAt[k][0], oy + drawAt[k][1]);
         if (readVal(ax - 1, ay) != 1) // no foreground part
           con.fillRect(bx - bSize / 2, by - bSize / 6 - 1, bSize / 3, bSize / 3 + 2);
@@ -117,13 +118,15 @@ function drawBlockFront(state, con, bSize, bCoord, partQ, color, offset, borderA
           con.lineTo(x - bSize / 6, y + bSize / 6 + 1);
           con.closePath();
           con.fill();
-          con.fillStyle = transparentize(lighten(color), (1 - disProgr) * trans);
-          con.beginPath();
-          con.moveTo(x, y + bSize / 12);
-          con.arc(x, y, bSize / 12, 0, 2 * Math.PI);
-          con.closePath();
-          con.fill();
-          con.fillStyle = transparentize(color, (1 - disProgr) * trans);
+          if (transparency == 1) {
+            con.fillStyle = transparentize(lighten(color), (1 - disProgr) * trans * transparency);
+            con.beginPath();
+            con.moveTo(x, y + bSize / 12);
+            con.arc(x, y, bSize / 12, 0, 2 * Math.PI);
+            con.closePath();
+            con.fill();
+          }
+          con.fillStyle = transparentize(color, (1 - disProgr) * trans * transparency);
           con.restore();
         };
         // bottom left corner

@@ -598,7 +598,7 @@ class GameDrawer {
       if (drawBlock[i]) {
         drawBlockFront(state, con, bSize, bCoord, blocks[i],
           BLOCK_COLOR_MAP[state.blockToCharacter[i].toUpperCase()], blockOffsets[i], borderArr, this,
-          this._blockInfoMap.get(state.blockToCharacter[i]), this._fallThrough, blockDeathProg[i], blockPortation[i]);
+          this._blockInfoMap.get(state.blockToCharacter[i]), 1, this._fallThrough, blockDeathProg[i], blockPortation[i]);
       }
     }
     for (let i=0; i<snakes.length; i++) {
