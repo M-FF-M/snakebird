@@ -24,9 +24,10 @@
  * @param {number} [disProgr] a number between 0 and 1 indicating the disappearing progress (1 = snake disappeared)
  * @param {any[]} [portation] an array indicating portation: [isBeingPorted, progr, startHeadX, startHeadY, endHeadX, endHeadY, port1X, port1Y, port2X, port2Y]
  * @param {number} [targetProgr] a number between 0 and 1 indicating the disappearing progress when the snake reached the taregt (1 = snake disappeared)
+ * @param {boolean} [isActive] whether this snake is the one currently selected by the player
  */
 function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset, borderArr, globalTime, globalSlowTime, zoom, mvSnProg = -1,
-    fallThrough = false, disProgr = 0, portation = [false], targetProgr = 0) {
+    fallThrough = false, disProgr = 0, portation = [false], targetProgr = 0, isActive = false) {
   const osc = Math.sin(globalTime * 2 * Math.PI);
   const oscSlow = Math.sin(globalSlowTime * 2 * Math.PI + getAddVar(color));
   let gdAniAteFruit = gd._aniAteFruit;
@@ -39,13 +40,14 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
 
   let headAngle = 0; let topBeakAngle = (0.05 + oscSlow * 0.05) * Math.PI; let bottomBeakAngle = (0.1 + osc * 0.05) * Math.PI;
   let topBeakLength = 1; let bottomBeakLength = 1; let hairAngle = (-0.2 + osc * 0.05) * Math.PI; let eyelidsClosed = 0;
+  if (!isActive) eyelidsClosed = 0.7;
   if (mvSnProg >= 0 && mvSnProg <= 1 && gdAniAteFruit) {
     const beakOsc = Math.sin(mvSnProg * Math.PI);
     topBeakAngle -= beakOsc * 0.2 * Math.PI;
     bottomBeakAngle += beakOsc * 0.2 * Math.PI;
   }
   if (oscSlow > 0.98) {
-    eyelidsClosed = (oscSlow - 0.98) / 0.02;
+    eyelidsClosed = eyelidsClosed + ((oscSlow - 0.98) / 0.02) * (1 - eyelidsClosed);
   }
 
   let colorSwitch = false; let noHead = false; const oldLen = len;
@@ -404,8 +406,18 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
       con2.closePath();
       con2.fill();
 
-      con2.fillStyle = transparentize(color, trans * (1 - disProgr));
       con2.restore();
+      if (!isActive) {
+        con2.textAlign = 'center';
+        con2.textBaseline = 'middle';
+        for (let i=0; i<3; i++) {
+          const oscZ = (globalSlowTime + i / 3) % 1;
+          const fontSize = bSize * 0.2 * (1.4 - oscZ * 0.4);
+          con2.font = `${Math.ceil(fontSize)}px \'Fredoka One\'`;
+          borderedText(con2, 'z', bx + (0.1 + oscZ * 0.6) * bSize, by - (0.4 + oscZ * 0.4) * bSize,
+            'rgba(255, 255, 255, 1)', 'rgba(55, 117, 161, 1)', fontSize * 0.1);
+        }
+      }
     }
     restoreCon(con2, portation);
   }

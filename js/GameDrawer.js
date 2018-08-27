@@ -74,6 +74,7 @@ class GameDrawer {
       changeGravity = false, options = {}, noCyclicAni = false, noAni = false) {
     const { allowMovingWithoutSpace = false, allowTailBiting = false } = options;
     this._options = { allowMovingWithoutSpace, allowTailBiting };
+    this._activeSnake = gameState.snakeToCharacter[0];
     this.draw = this.draw.bind(this);
     this.click = this.click.bind(this);
     this.mouseDown = this.mouseDown.bind(this);
@@ -131,6 +132,14 @@ class GameDrawer {
     this._canvas.addEventListener('mousemove', this.mouseMove);
     this._canvas.addEventListener('mouseleave', this.mouseLeave);
     this.draw();
+  }
+
+  /**
+   * Set a new active snake
+   * @param {string} newActiveSnake the character corresponding to the new active snake
+   */
+  setActiveSnake(newActiveSnake) {
+    this._activeSnake = newActiveSnake;
   }
 
   _calcBlockInfoArr() {
@@ -597,11 +606,11 @@ class GameDrawer {
         if (this._animationRunning && i == this._aniSnakeMoveInd)
           drawSnakebird(this, state, con, this._canvas, bSize, bCoord, snakes[i], COLOR_MAP[state.snakeToCharacter[i]],
             snakeOffsets[i], borderArr, globalTime, globalSlowTime, this._applyZoom, cStep == 0 ? cStepT : 2, this._fallThrough,
-            snakeDeathProg[i], snakePortation[i], snakeTargetProgr[i]);
+            snakeDeathProg[i], snakePortation[i], snakeTargetProgr[i], state.snakeToCharacter[i] == this._activeSnake);
         else
           drawSnakebird(this, state, con, this._canvas, bSize, bCoord, snakes[i], COLOR_MAP[state.snakeToCharacter[i]],
             snakeOffsets[i], borderArr, globalTime, globalSlowTime, this._applyZoom, -1, this._fallThrough,
-            snakeDeathProg[i], snakePortation[i], snakeTargetProgr[i]);
+            snakeDeathProg[i], snakePortation[i], snakeTargetProgr[i], state.snakeToCharacter[i] == this._activeSnake);
       }
     }
 

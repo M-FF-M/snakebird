@@ -126,11 +126,12 @@ class GameBoard {
       this._options, this._noCyclicAni, this._noAni);
     this._drawer.draw(true);
     this._activeSnake = this._state.snakeToCharacter[0];
+    this._drawer.setActiveSnake(this._activeSnake);
     this._drawer.addEventListener('click', this.click);
     this._drawer.addEventListener('absolute click', this.canvasClick);
     this._drawer.addEventListener('mousemove', this.mouseMoved);
     window.addEventListener('resize', this.resize);
-    window.addEventListener('keypress', this.press);
+    window.addEventListener('keyup', this.press);
     window.addEventListener('wheel', this.mouseWheel);
     this.drawInfoLine();
   }
@@ -367,6 +368,8 @@ class GameBoard {
     if (val > 0 && val < 32) {
       const sn = GET_SNAKE(val);
       this._activeSnake = this._state.snakeToCharacter[sn];
+      this._drawer.setActiveSnake(this._activeSnake);
+      if (this._noCyclicAni) this._drawer.draw();
     }
   }
 
