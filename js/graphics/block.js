@@ -14,13 +14,15 @@
  * to the game board border
  * @param {GameDrawer} gd the game drawer calling this method
  * @param {object} infoObj an info object returned by calculateGraphicsInfo()
- * @param {number} [transparency] a number betwenn 0 and 1 indicating the transparency of the block
+ * @param {boolean} [dashed] if set to true, only a dashed outline will be drawn (intended for use with failed portations)
  * @param {boolean} [fallThrough] if set to true, snakes that fall out of the board will appear again on the other side of the board
  * @param {number} [disProgr] a number between 0 and 1 indicating the disappearing progress (1 = block disappeared)
  * @param {any[]} [portation] an array indicating portation: [isBeingPorted, progr, startHeadX, startHeadY, endHeadX, endHeadY, port1X, port1Y, port2X, port2Y]
+ * @param {number} [blockX] the x coordinate of the position blocking the portation (necessary when used with dashed option)
+ * @param {number} [blockY] the y coordinate of the position blocking the portation
  */
 function drawBlockFront(state, con, bSize, bCoord, partQ, color, offset, borderArr, gd,
-    infoObj, transparency = 1, fallThrough = false, disProgr = 0, portation = [false]) {
+    infoObj, dashed = false, fallThrough = false, disProgr = 0, portation = [false], blockX = 0, blockY = 0) {
   const [x0, y0] = [...partQ.get(0)];
   for (let i=0; i<partQ.length; i++) {
     const [x, y] = partQ.get(i);
@@ -42,7 +44,7 @@ function drawBlockFront(state, con, bSize, bCoord, partQ, color, offset, borderA
   let trans = portation[0] ? (portation[1] <= 0.5 ? (0.5 - portation[1]) / 0.5 : (portation[1] - 0.5) / 0.5) : 1;
   trans = 1 - ((1 - trans) * (1 - trans));
   for (let k=0; k<drawArr[0][1][2].length; k++) {
-    if (disProgr > 0) {
+    if (disProgr > 0 && !dashed) {
       con.save();
       const [xc, yc] = infoObj.arrToBlockCoords(infoObj.centroid[0] + drawArr[0][1][2][k][0], infoObj.centroid[1] + drawArr[0][1][2][k][1]);
       const [axc, ayc] = bCoord(xc + x0 + offset[0], yc + y0 + offset[1]);
@@ -58,38 +60,74 @@ function drawBlockFront(state, con, bSize, bCoord, partQ, color, offset, borderA
     for (let q=0; q<drawArr.length; q++) {
       const [[ax, ay], [ox, oy, drawAt]] = drawArr[q];
       if (readVal(ax, ay) == 1) { // foreground
-        con.fillStyle = transparentize(color, (1 - disProgr) * trans * transparency);
+        con.fillStyle = transparentize(color, (1 - disProgr) * trans);
         const [bx, by] = bCoord(ox + drawAt[k][0], oy + drawAt[k][1]);
-        if (readVal(ax - 1, ay) != 1) // no foreground part
-          con.fillRect(bx - bSize / 2, by - bSize / 6 - 1, bSize / 3, bSize / 3 + 2);
-        if (readVal(ax + 1, ay) != 1) // no foreground part
-          con.fillRect(bx + bSize / 6, by - bSize / 6 - 1, bSize / 3, bSize / 3 + 2);
-        if (readVal(ax, ay - 1) != 1) // no foreground part
-          con.fillRect(bx - bSize / 6 - 1, by - bSize / 2, bSize / 3 + 2, bSize / 3);
-        if (readVal(ax, ay + 1) != 1) // no foreground part
-          con.fillRect(bx - bSize / 6 - 1, by + bSize / 6, bSize / 3 + 2, bSize / 3);
+        if (!dashed) {
+          if (readVal(ax - 1, ay) != 1) // no foreground part
+            con.fillRect(bx - bSize / 2, by - bSize / 6 - 1, bSize / 3, bSize / 3 + 2);
+          if (readVal(ax + 1, ay) != 1) // no foreground part
+            con.fillRect(bx + bSize / 6, by - bSize / 6 - 1, bSize / 3, bSize / 3 + 2);
+          if (readVal(ax, ay - 1) != 1) // no foreground part
+            con.fillRect(bx - bSize / 6 - 1, by - bSize / 2, bSize / 3 + 2, bSize / 3);
+          if (readVal(ax, ay + 1) != 1) // no foreground part
+            con.fillRect(bx - bSize / 6 - 1, by + bSize / 6, bSize / 3 + 2, bSize / 3);
 
-        // straight connections
-        // bottom left connection
-        if (readVal(ax - 1, ay) != 1 && readVal(ax, ay + 1) == 1)
-          con.fillRect(bx - bSize / 2, by + bSize / 6, bSize / 3, bSize / 3 + 1);
-        if (readVal(ax - 1, ay) == 1 && readVal(ax, ay + 1) != 1)
-          con.fillRect(bx - bSize / 2 - 1, by + bSize / 6, bSize / 3 + 1, bSize / 3);
-        // bottom right connection
-        if (readVal(ax + 1, ay) != 1 && readVal(ax, ay + 1) == 1)
-          con.fillRect(bx + bSize / 6, by + bSize / 6, bSize / 3, bSize / 3 + 1);
-        if (readVal(ax + 1, ay) == 1 && readVal(ax, ay + 1) != 1)
-          con.fillRect(bx + bSize / 6, by + bSize / 6, bSize / 3 + 1, bSize / 3);
-        // top right connection
-        if (readVal(ax + 1, ay) != 1 && readVal(ax, ay - 1) == 1)
-          con.fillRect(bx + bSize / 6, by - bSize / 2 - 1, bSize / 3, bSize / 3 + 1);
-        if (readVal(ax + 1, ay) == 1 && readVal(ax, ay - 1) != 1)
-          con.fillRect(bx + bSize / 6, by - bSize / 2, bSize / 3 + 1, bSize / 3);
-        // top left connection
-        if (readVal(ax - 1, ay) != 1 && readVal(ax, ay - 1) == 1)
-          con.fillRect(bx - bSize / 2, by - bSize / 2 - 1, bSize / 3, bSize / 3 + 1);
-        if (readVal(ax - 1, ay) == 1 && readVal(ax, ay - 1) != 1)
-          con.fillRect(bx - bSize / 2 - 1, by - bSize / 2, bSize / 3 + 1, bSize / 3);
+          // straight connections
+          // bottom left connection
+          if (readVal(ax - 1, ay) != 1 && readVal(ax, ay + 1) == 1)
+            con.fillRect(bx - bSize / 2, by + bSize / 6, bSize / 3, bSize / 3 + 1);
+          if (readVal(ax - 1, ay) == 1 && readVal(ax, ay + 1) != 1)
+            con.fillRect(bx - bSize / 2 - 1, by + bSize / 6, bSize / 3 + 1, bSize / 3);
+          // bottom right connection
+          if (readVal(ax + 1, ay) != 1 && readVal(ax, ay + 1) == 1)
+            con.fillRect(bx + bSize / 6, by + bSize / 6, bSize / 3, bSize / 3 + 1);
+          if (readVal(ax + 1, ay) == 1 && readVal(ax, ay + 1) != 1)
+            con.fillRect(bx + bSize / 6, by + bSize / 6, bSize / 3 + 1, bSize / 3);
+          // top right connection
+          if (readVal(ax + 1, ay) != 1 && readVal(ax, ay - 1) == 1)
+            con.fillRect(bx + bSize / 6, by - bSize / 2 - 1, bSize / 3, bSize / 3 + 1);
+          if (readVal(ax + 1, ay) == 1 && readVal(ax, ay - 1) != 1)
+            con.fillRect(bx + bSize / 6, by - bSize / 2, bSize / 3 + 1, bSize / 3);
+          // top left connection
+          if (readVal(ax - 1, ay) != 1 && readVal(ax, ay - 1) == 1)
+            con.fillRect(bx - bSize / 2, by - bSize / 2 - 1, bSize / 3, bSize / 3 + 1);
+          if (readVal(ax - 1, ay) == 1 && readVal(ax, ay - 1) != 1)
+            con.fillRect(bx - bSize / 2 - 1, by - bSize / 2, bSize / 3 + 1, bSize / 3);
+        } else {
+          con.strokeStyle = transparentize(color, (1 - disProgr) * trans);
+          con.lineCap = 'butt'; con.lineWidth = Math.ceil(bSize / 6);
+          const drawLines = (x1, y1, x2, y2, x3, y3, x4, y4) => {
+            con.beginPath(); con.moveTo(x1, y1); con.lineTo(x2, y2); con.closePath(); con.stroke();
+            if (typeof x3 === 'number')
+              { con.beginPath(); con.moveTo(x3, y3); con.lineTo(x4, y4); con.closePath(); con.stroke(); }
+          };
+
+          // straight connections
+          // bottom left connection
+          if (readVal(ax - 1, ay) != 1 && readVal(ax, ay + 1) == 1)
+            drawLines(bx - bSize / 2, by + bSize / 6, bx - bSize / 6, by + bSize / 6,
+                      bx - bSize / 2, by + bSize / 2, bx - bSize / 6, by + bSize / 2);
+          if (readVal(ax - 1, ay) == 1 && readVal(ax, ay + 1) != 1)
+            drawLines(bx - bSize / 6, by + bSize / 6, bx - bSize / 6, by + bSize / 2);
+          // bottom right connection
+          if (readVal(ax + 1, ay) != 1 && readVal(ax, ay + 1) == 1)
+            drawLines(bx + bSize / 6, by + bSize / 6, bx + bSize / 2, by + bSize / 6,
+                      bx + bSize / 6, by + bSize / 2, bx + bSize / 2, by + bSize / 2);
+          if (readVal(ax + 1, ay) == 1 && readVal(ax, ay + 1) != 1)
+            drawLines(bx + bSize / 6, by + bSize / 6, bx + bSize / 6, by + bSize / 2,
+                      bx + bSize / 2, by + bSize / 6, bx + bSize / 2, by + bSize / 2);
+          // top right connection
+          if (readVal(ax + 1, ay) != 1 && readVal(ax, ay - 1) == 1)
+            drawLines(bx + bSize / 6, by - bSize / 6, bx + bSize / 2, by - bSize / 6);
+          if (readVal(ax + 1, ay) == 1 && readVal(ax, ay - 1) != 1)
+            drawLines(bx + bSize / 6, by - bSize / 2, bx + bSize / 6, by - bSize / 6,
+                      bx + bSize / 2, by - bSize / 2, bx + bSize / 2, by - bSize / 6);
+          // top left connection
+          if (readVal(ax - 1, ay) != 1 && readVal(ax, ay - 1) == 1)
+            drawLines(bx - bSize / 2, by - bSize / 6, bx - bSize / 6, by - bSize / 6);
+          if (readVal(ax - 1, ay) == 1 && readVal(ax, ay - 1) != 1)
+            drawLines(bx - bSize / 6, by - bSize / 2, bx - bSize / 6, by - bSize / 6);
+        }
 
         // corners
         const drawCorner = (x, y, rounded) => { // rounded: 0: top left, 1: top right, 2: bottom right, 3: bottom left
@@ -107,26 +145,39 @@ function drawBlockFront(state, con, bSize, bCoord, partQ, color, offset, borderA
             con.rotate(1.5 * Math.PI);
             con.translate(-x, -y);
           }
-          con.beginPath();
-          con.moveTo(x - bSize / 6, y + bSize / 6 + 1);
-          con.lineTo(x - bSize / 6, y);
-          con.arc(x, y, bSize / 6, Math.PI, 1.5 * Math.PI);
-          con.lineTo(x + bSize / 6 + 1, y - bSize / 6);
-          con.lineTo(x + bSize / 6 + 1, y + bSize / 6);
-          con.lineTo(x + bSize / 6, y + bSize / 6);
-          con.lineTo(x + bSize / 6, y + bSize / 6 + 1);
-          con.lineTo(x - bSize / 6, y + bSize / 6 + 1);
-          con.closePath();
-          con.fill();
-          if (transparency == 1) {
-            con.fillStyle = transparentize(lighten(color), (1 - disProgr) * trans * transparency);
+          if (!dashed) {
+            con.beginPath();
+            con.moveTo(x - bSize / 6, y + bSize / 6 + 1);
+            con.lineTo(x - bSize / 6, y);
+            con.arc(x, y, bSize / 6, Math.PI, 1.5 * Math.PI);
+            con.lineTo(x + bSize / 6 + 1, y - bSize / 6);
+            con.lineTo(x + bSize / 6 + 1, y + bSize / 6);
+            con.lineTo(x + bSize / 6, y + bSize / 6);
+            con.lineTo(x + bSize / 6, y + bSize / 6 + 1);
+            con.lineTo(x - bSize / 6, y + bSize / 6 + 1);
+            con.closePath();
+            con.fill();
+          } else {
+            con.strokeStyle = transparentize(color, (1 - disProgr) * trans);
+            con.lineCap = 'butt'; con.lineWidth = Math.ceil(bSize / 6);
+            con.beginPath();
+            con.moveTo(x + bSize / 6, y - bSize / 6);
+            con.lineTo(x + bSize / 6, y + bSize / 6);
+            con.closePath(); con.stroke();
+            con.beginPath();
+            con.moveTo(x + bSize / 6, y + bSize / 6);
+            con.lineTo(x - bSize / 6, y + bSize / 6);
+            con.closePath(); con.stroke();
+          }
+          if (!dashed) {
+            con.fillStyle = transparentize(lighten(color), (1 - disProgr) * trans);
             con.beginPath();
             con.moveTo(x, y + bSize / 12);
             con.arc(x, y, bSize / 12, 0, 2 * Math.PI);
             con.closePath();
             con.fill();
           }
-          con.fillStyle = transparentize(color, (1 - disProgr) * trans * transparency);
+          con.fillStyle = transparentize(color, (1 - disProgr) * trans);
           con.restore();
         };
         // bottom left corner
@@ -150,9 +201,17 @@ function drawBlockFront(state, con, bSize, bCoord, partQ, color, offset, borderA
         if (readVal(ax - 1, ay) == 1 && readVal(ax, ay - 1) == 1 && readVal(ax - 1, ay - 1) != 1)
           drawCorner(bx - bSize / 3, by - bSize / 3, 2);
       }
+      if (dashed) {
+        con.strokeStyle = transparentize('rgba(204, 0, 0, 1)', (1 - disProgr) * trans); con.lineWidth = Math.ceil(bSize / 6); con.lineCap = 'butt';
+        const [bx, by] = bCoord(blockX + drawAt[k][0], blockY + drawAt[k][1]);
+        con.beginPath(); con.moveTo(bx - bSize / 2, by - bSize / 2);
+        con.lineTo(bx + bSize / 2, by + bSize / 2); con.closePath(); con.stroke();
+        con.beginPath(); con.moveTo(bx + bSize / 2, by - bSize / 2);
+        con.lineTo(bx - bSize / 2, by + bSize / 2); con.closePath(); con.stroke();
+      }
     }
     restoreCon(con, portation);
-    if (disProgr > 0) con.restore();
+    if (disProgr > 0 && !dashed) con.restore();
   }
 }
 

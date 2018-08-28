@@ -25,9 +25,11 @@
  * @param {any[]} [portation] an array indicating portation: [isBeingPorted, progr, startHeadX, startHeadY, endHeadX, endHeadY, port1X, port1Y, port2X, port2Y]
  * @param {number} [targetProgr] a number between 0 and 1 indicating the disappearing progress when the snake reached the taregt (1 = snake disappeared)
  * @param {boolean} [isActive] whether this snake is the one currently selected by the player
+ * @return {object} a zzzInfo object to be passed to drawZZZ
  */
 function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset, borderArr, globalTime, globalSlowTime, zoom, mvSnProg = -1,
     fallThrough = false, disProgr = 0, portation = [false], targetProgr = 0, isActive = false) {
+  const zzzInfo = {};
   const osc = Math.sin(globalTime * 2 * Math.PI);
   const oscSlow = Math.sin(globalSlowTime * 2 * Math.PI + getAddVar(color));
   let gdAniAteFruit = gd._aniAteFruit;
@@ -277,6 +279,9 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
   drawHiddenCanvas(con2, 1); // draw snake with rounded corners
   con2.globalCompositeOperation = 'source-over';
 
+  zzzInfo.vars = [bSize, portation, len, bCoord];
+  zzzInfo.arr = [];
+
   if (state.targetXDistance > 0) headAngle += Math.PI;
   if (typeof zoom === 'function') zoom(con2);
   for (let k=0; k<drawArrA[0][1][2].length; k++) { // draw snake head
@@ -408,7 +413,8 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
 
       con2.restore();
       if (!isActive) {
-        con2.textAlign = 'center';
+        zzzInfo.arr.push([bx, by, pA[k]]);
+        /*con2.textAlign = 'center';
         con2.textBaseline = 'middle';
         for (let i=0; i<3; i++) {
           const oscZ = (globalSlowTime + i / 3) % 1;
@@ -416,7 +422,7 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
           con2.font = `${Math.ceil(fontSize)}px \'Fredoka One\'`;
           borderedText(con2, 'z', bx + (0.1 + oscZ * 0.6) * bSize, by - (0.4 + oscZ * 0.4) * bSize,
             'rgba(255, 255, 255, 1)', 'rgba(55, 117, 161, 1)', fontSize * 0.1);
-        }
+        }*/
       }
     }
     restoreCon(con2, portation);
@@ -464,6 +470,35 @@ function drawSnakebird(gd, state, con, can, bSize, bCoord, partQ, color, offset,
   drawHiddenCanvas(con, 0, zoom); // draw snake on main canvas
 
   if (typeof zoom === 'function') con3.restore();
+
+  return zzzInfo;
+}
+
+/**
+ * Draw the ZZZ animation for an inactive snakebird
+ * @param {GameState} state the (old) game state
+ * @param {CanvasRenderingContext2D} con the context of the canvas
+ * @param {number} globalSlowTime a number between 0 and 1 that is used for slow cyclic animations
+ * @param {object} zzzInfo an info object returned by drawSnakebird
+ */
+function drawZZZ(state, con, globalSlowTime, zzzInfo) {
+  if (zzzInfo != null) {
+    const [bSize, portation, len, bCoord] = zzzInfo.vars;
+    for (let i=0; i<zzzInfo.arr.length; i++) {
+      const [bx, by, pA_k] = zzzInfo.arr[i];
+      scaleCon(con, state, portation, pA_k, len, bCoord);
+      con.textAlign = 'center';
+      con.textBaseline = 'middle';
+      for (let i=0; i<3; i++) {
+        const oscZ = (globalSlowTime + i / 3) % 1;
+        const fontSize = bSize * 0.2 * (1.4 - oscZ * 0.4);
+        con.font = `${Math.ceil(fontSize)}px \'Fredoka One\'`;
+        borderedText(con, 'z', bx + (0.1 + oscZ * 0.6) * bSize, by - (0.4 + oscZ * 0.4) * bSize,
+          'rgba(255, 255, 255, 1)', 'rgba(55, 117, 161, 1)', fontSize * 0.1);
+      }
+      restoreCon(con, portation);
+    }
+  }
 }
 
 /**

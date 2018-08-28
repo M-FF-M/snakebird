@@ -471,6 +471,7 @@ class GameDrawer {
     let globalSlowTime = ((new Date()).getTime() % 10000) / 10000;
     if (this._noCyclicAni) globalTime = globalSlowTime = 0;
 
+    const portationBlockArr = [];
     const drawSnake = []; const snakeDeathProg = []; const snakePortation = []; const snakeTargetProgr = [];
     const snakeOffsets = [];
     for (let i=0; i<state.snakes.length; i++) {
@@ -496,6 +497,12 @@ class GameDrawer {
         if (this._aniEnd < 0) undo = true;
       } else {
         const [snakes, blocks] = [this._snakeQueues, this._blockQueues];
+        const snakesB = [];
+        for (let i=0; i<snakes.length; i++) {
+          snakesB[i] = new Queue();
+          for (let k=0; k<snakes[i].length; k++) snakesB[i].pushBack(snakes[i].get(k));
+        }
+        if (!this._aniAteFruit) snakesB[this._aniSnakeMoveInd].popBack();
         cStep = Math.floor(timePassed / STEP_LENGTH);
         cStepT = (timePassed - cStep * STEP_LENGTH) / STEP_LENGTH;
         if (this._aniAteFruit) {
@@ -536,6 +543,24 @@ class GameDrawer {
             if (isSnake) snakeOffsets[ib] = [oPos[0] - initialPos[0], oPos[1] - initialPos[1]];
             else blockOffsets[ib] = [oPos[0] - initialPos[0], oPos[1] - initialPos[1]];
             continue;
+          }
+          if (nextPos.length == 8) { // failed portation
+            // portationBlockArr: [partQ, offset, infoObj, progr, blockingPosX, blockingPosY]
+            let pVar = (cStepT - 1) * (cStepT - 1);
+            if (cStep == this._aniLength - 1) // failed portation cannot be animated in next frame (because there are no more frames)
+              pVar = (2 * cStepT - 1) * (2 * cStepT - 1);
+            const offs = [state.portalPos[nextPos[5]][0] - state.portalPos[nextPos[4]][0] + nextPos[0] - initialPos[0],
+              state.portalPos[nextPos[5]][1] - state.portalPos[nextPos[4]][1] + nextPos[1] - initialPos[1]];
+            if (isSnake) portationBlockArr.push([snakesB[ib], offs, calculateGraphicsInfo(snakesB[ib]), pVar, nextPos[6], nextPos[7]]);
+            else portationBlockArr.push([blocks[ib], offs, this._blockInfoMap.get(state.blockToCharacter[ib]), pVar, nextPos[6], nextPos[7]]);
+          }
+          if (lastPos.length == 8) { // failed portation
+            // portationBlockArr: [partQ, offset, infoObj, progr, blockingPosX, blockingPosY]
+            let pVar = cStepT * cStepT;
+            const offs = [state.portalPos[lastPos[5]][0] - state.portalPos[lastPos[4]][0] + lastPos[0] - initialPos[0],
+              state.portalPos[lastPos[5]][1] - state.portalPos[lastPos[4]][1] + lastPos[1] - initialPos[1]];
+            if (isSnake) portationBlockArr.push([snakesB[ib], offs, calculateGraphicsInfo(snakesB[ib]), pVar, lastPos[6], lastPos[7]]);
+            else portationBlockArr.push([blocks[ib], offs, this._blockInfoMap.get(state.blockToCharacter[ib]), pVar, lastPos[6], lastPos[7]]);
           }
           if (cStep < this._aniLength - 1 && cStepT >= 0.5) {
             const nextNextPos = this._aniArray[cStep + 2][i];
@@ -598,23 +623,30 @@ class GameDrawer {
       if (drawBlock[i]) {
         drawBlockFront(state, con, bSize, bCoord, blocks[i],
           BLOCK_COLOR_MAP[state.blockToCharacter[i].toUpperCase()], blockOffsets[i], borderArr, this,
-          this._blockInfoMap.get(state.blockToCharacter[i]), 1, this._fallThrough, blockDeathProg[i], blockPortation[i]);
+          this._blockInfoMap.get(state.blockToCharacter[i]), false, this._fallThrough, blockDeathProg[i], blockPortation[i]);
       }
     }
+    const zzzArr = [];
     for (let i=0; i<snakes.length; i++) {
       if (drawSnake[i]) {
         if (this._animationRunning && i == this._aniSnakeMoveInd)
-          drawSnakebird(this, state, con, this._canvas, bSize, bCoord, snakes[i], COLOR_MAP[state.snakeToCharacter[i]],
+          zzzArr.push(drawSnakebird(this, state, con, this._canvas, bSize, bCoord, snakes[i], COLOR_MAP[state.snakeToCharacter[i]],
             snakeOffsets[i], borderArr, globalTime, globalSlowTime, this._applyZoom, cStep == 0 ? cStepT : 2, this._fallThrough,
-            snakeDeathProg[i], snakePortation[i], snakeTargetProgr[i], state.snakeToCharacter[i] == this._activeSnake);
+            snakeDeathProg[i], snakePortation[i], snakeTargetProgr[i], state.snakeToCharacter[i] == this._activeSnake));
         else
-          drawSnakebird(this, state, con, this._canvas, bSize, bCoord, snakes[i], COLOR_MAP[state.snakeToCharacter[i]],
+          zzzArr.push(drawSnakebird(this, state, con, this._canvas, bSize, bCoord, snakes[i], COLOR_MAP[state.snakeToCharacter[i]],
             snakeOffsets[i], borderArr, globalTime, globalSlowTime, this._applyZoom, -1, this._fallThrough,
-            snakeDeathProg[i], snakePortation[i], snakeTargetProgr[i], state.snakeToCharacter[i] == this._activeSnake);
+            snakeDeathProg[i], snakePortation[i], snakeTargetProgr[i], state.snakeToCharacter[i] == this._activeSnake));
       }
     }
 
     this.drawBoardFront(state, con, bSize, bCoord, globalTime, globalSlowTime, removedFruitPos, removedFruitProg);
+    for (let i=0; i<zzzArr.length; i++)
+      drawZZZ(state, con, globalSlowTime, zzzArr[i]);
+    for (let i=0; i<portationBlockArr.length; i++) // portationBlockArr: [partQ, offset, infoObj, progr, blockingPosX, blockingPosY]
+      drawBlockFront(state, con, bSize, bCoord, portationBlockArr[i][0], 'rgba(255, 255, 255, 1)', portationBlockArr[i][1],
+        undefined, this, portationBlockArr[i][2], true, this._fallThrough, portationBlockArr[i][3], [false],
+        portationBlockArr[i][4], portationBlockArr[i][5]);
 
     con.globalCompositeOperation = 'destination-in';
     con.fillStyle = 'rgba(255, 255, 255, 1)';
