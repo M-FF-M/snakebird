@@ -12,6 +12,12 @@ const INFO_LINE_HEIGHT = 40;
 const MIN_SIZE = [300, 200];
 
 /**
+ * The duration of the start animation in milliseconds
+ * @type {number}
+ */
+const START_ANIMATION = 1000;
+
+/**
  * Create a game board from a level description
  * @param {HTMLElement} parentElem the parent element the game board should be added to
  * @param {object} obj a level description object
@@ -55,6 +61,7 @@ class GameBoard {
     this.press = this.press.bind(this);
     this.mouseMoved = this.mouseMoved.bind(this);
     this.mouseWheel = this.mouseWheel.bind(this);
+    this.drawForeground = this.drawForeground.bind(this);
     /**
      * Counts the number of moves needed to reach the current state
      * @type {number}
@@ -65,6 +72,9 @@ class GameBoard {
      * @type {number}
      */
     this.extraMoveCounter = 0;
+    this._noOps = true; // if set to true, do not process any user input
+    this._gameStartTime = (new Date()).getTime();
+    this._gameWon = false; this._gameWonTime = 0;
     this._undoButtonPos = [];
     this._redoButtonPos = [];
     this._undoHover = false;
@@ -106,6 +116,25 @@ class GameBoard {
       else randPosX = (i - this._smallMountains - this._mediumMountains + 0.5) / this._largeMountains + (Math.random() * randVar - randVar * 0.5);
       this._mountainArr.push([randPosX, generateMountain(5 + Math.floor(Math.random() * 5), i >= 7)]);
     }
+    this._cloudOverlayPoints = 8;
+    this._cloudOverlayArr = []; // [angle, radScale, leftAng, rightAng, leftSc, rightSc]
+    for (let i=0; i<4; i++) {
+      this._cloudOverlayArr[i] = [];
+      for (let k=0; k<this._cloudOverlayPoints; k++) {
+        if (k == 0) this._cloudOverlayArr[i].push([-0.005 * Math.PI, 1]);
+        else {
+          let angle = (k / (this._cloudOverlayPoints - 1)) * 0.5 * Math.PI;
+          if (k < this._cloudOverlayPoints - 1) angle += (0.02 * Math.random() - 0.01) * Math.PI;
+          let radScale = 1;
+          if (k < this._cloudOverlayPoints - 1) radScale += Math.random() * 0.2 - 0.1;
+          const lAng = (0.2 * Math.random() - 0.05) * Math.PI;
+          const rAng = (-0.2 * Math.random() + 0.05) * Math.PI;
+          const lScale = 0.8 + Math.random() * 0.4;
+          const rScale = 0.8 + Math.random() * 0.4;
+          this._cloudOverlayArr[i].push([angle, radScale, lAng, rAng, lScale, rScale]);
+        }
+      }
+    }
     this._canvasArr = [];
     this._width = Math.max(window.innerWidth, MIN_SIZE[0]);
     this._height = Math.max(window.innerHeight, MIN_SIZE[1]);
@@ -133,7 +162,16 @@ class GameBoard {
     window.addEventListener('resize', this.resize);
     window.addEventListener('keyup', this.press);
     window.addEventListener('wheel', this.mouseWheel);
-    this.drawInfoLine();
+    this.drawForeground(true);
+  }
+
+  /**
+   * Should be called when the user completed the level
+   */
+  gameWon() {
+    this._gameWon = true; this._gameWonTime = (new Date()).getTime();
+    this._noOps = true;
+    this.drawForeground(true);
   }
 
   /**
@@ -141,17 +179,18 @@ class GameBoard {
    */
   redraw() {
     this._drawer.draw();
-    this.drawInfoLine();
+    this.drawForeground();
     this.drawBackground(!this._noCyclicAni);
   }
 
   /**
-   * Draw the information bar
+   * Draw the information bar and any other overlays
+   * @param {boolean} [animate] if set to true, the call is treated as an animation frame
    */
-  drawInfoLine() {
+  drawForeground(animate = false) {
     const cx = this._width / 2; const cy = INFO_LINE_HEIGHT / 2;
     const con = this._canvasArr[2].getContext('2d');
-    con.clearRect(0, 0, this._width, INFO_LINE_HEIGHT);
+    con.clearRect(0, 0, this._width, this._height);
     con.font = `${Math.ceil(INFO_LINE_HEIGHT / 2)}px \'Fredoka One\'`;
     con.fillStyle = 'rgba(255, 255, 255, 1)';
     con.textAlign = 'center';
@@ -188,6 +227,79 @@ class GameBoard {
       con.font = `${Math.ceil(INFO_LINE_HEIGHT / 4)}px \'Fredoka One\'`;
       con.fillText('(loading fonts)', cx, cy + 0.7 * INFO_LINE_HEIGHT / 2);
     }
+
+    let continueAnimation = false; let drawCloudOverlay = 0; let gameWonTextProgr = 0;
+    const cTime = (new Date()).getTime();
+    if (this._gameWon) {
+      const timePassed = cTime - this._gameWonTime;
+      if (timePassed < 3 * START_ANIMATION) {
+        continueAnimation = true;
+        if (timePassed < START_ANIMATION) gameWonTextProgr = timePassed / START_ANIMATION;
+        else gameWonTextProgr = 1;
+        if (timePassed > 2 * START_ANIMATION) drawCloudOverlay = (timePassed - 2 * START_ANIMATION) / START_ANIMATION;
+      } else {
+        drawCloudOverlay = 1;
+      }
+    } else {
+      const timePassed = cTime - this._gameStartTime;
+      if (timePassed < START_ANIMATION) {
+        continueAnimation = true;
+        drawCloudOverlay = 1 - timePassed / START_ANIMATION;
+      } else {
+        this._noOps = false;
+      }
+    }
+    if (gameWonTextProgr > 0) {
+      const fontSize = Math.min(this._width * 0.15, this._height * 0.5);
+      borderedTextAppear(con, 'Well done!', this._width / 2, this._height / 2, 'rgba(255, 255, 255, 1)', 'rgba(255, 153, 51, 1)',
+        fontSize, '\'Fredoka One\'', gameWonTextProgr);
+    }
+    if (drawCloudOverlay > 0) {
+      con.fillStyle = 'rgba(255, 255, 255, 1)';
+      const circleRad = 1.2 * Math.sqrt(this._width * this._width / 4 + this._height * this._height / 4);
+      const cCircleRad = (1 - drawCloudOverlay) * circleRad;
+      for (let i=0; i<4; i++) { // [angle, radScale, leftAng, rightAng, leftSc, rightSc]
+        con.beginPath();
+        if (i == 0) // top right
+          con.moveTo(this._width / 2 + 2 * circleRad, this._height / 2 + 5);
+        else if (i == 1) // top left
+          con.moveTo(this._width / 2 + 5, this._height / 2 - 2 * circleRad);
+        else if (i == 2) // bottom left
+          con.moveTo(this._width / 2 - 2 * circleRad, this._height / 2 - 5);
+        else // bottom right
+          con.moveTo(this._width / 2 - 5, this._height / 2 + 2 * circleRad);
+        let lx, ly;
+        for (let k=0; k<this._cloudOverlayPoints; k++) {
+          const [cAng, cRad] = [-i * 0.5 * Math.PI - this._cloudOverlayArr[i][k][0], this._cloudOverlayArr[i][k][1]];
+          const [x, y] = [this._width / 2 + Math.cos(cAng) * cCircleRad * cRad, this._height / 2 + Math.sin(cAng) * cCircleRad * cRad];
+          if (k == 0) con.lineTo(x, y);
+          else bezierCurve(con, lx, ly, x, y, this._cloudOverlayArr[i][k][2], this._cloudOverlayArr[i][k][3],
+            this._cloudOverlayArr[i][k][4], this._cloudOverlayArr[i][k][5]);
+          [lx, ly] = [x, y];
+        }
+        if (i == 0) { // top right
+          con.lineTo(this._width / 2 - 5, this._height / 2 - 2 * circleRad);
+          con.lineTo(this._width / 2 + 2 * circleRad, this._height / 2 - 2 * circleRad);
+          con.lineTo(this._width / 2 + 2 * circleRad, this._height / 2 + 5);
+        } else if (i == 1) { // top left
+          con.lineTo(this._width / 2 - 2 * circleRad, this._height / 2 + 5);
+          con.lineTo(this._width / 2 - 2 * circleRad, this._height / 2 - 2 * circleRad);
+          con.lineTo(this._width / 2 + 5, this._height / 2 - 2 * circleRad);
+        } else if (i == 2) { // bottom left
+          con.lineTo(this._width / 2 + 5, this._height / 2 + 2 * circleRad);
+          con.lineTo(this._width / 2 - 2 * circleRad, this._height / 2 + 2 * circleRad);
+          con.lineTo(this._width / 2 - 2 * circleRad, this._height / 2 - 5);
+        } else { // bottom right
+          con.lineTo(this._width / 2 + 2 * circleRad, this._height / 2 - 5);
+          con.lineTo(this._width / 2 + 2 * circleRad, this._height / 2 + 2 * circleRad);
+          con.lineTo(this._width / 2 - 5, this._height / 2 + 2 * circleRad);
+        }
+        con.closePath();
+        con.fill();
+      }
+    }
+    if (continueAnimation && animate)
+      window.requestAnimationFrame(() => this.drawForeground(true));
   }
 
   /**
@@ -196,6 +308,7 @@ class GameBoard {
    * @param {number} y the y coordinate of the mouse
    */
   canvasClick(x, y) {
+    if (this._noOps) return;
     if (this._undoButtonPos.length > 0) {
       const [xa, ya] = [x - this._undoButtonPos[0], y - this._undoButtonPos[1]];
       if (xa >= 0 && ya >= 0 && xa <= this._undoButtonPos[2] && ya <= this._undoButtonPos[3])
@@ -213,6 +326,7 @@ class GameBoard {
    * @param {object} event the event object
    */
   mouseMoved(event) {
+    if (this._noOps) return;
     const [x, y] = [event.clientX, event.clientY];
     const oUH = this._undoHover;
     const oRH = this._redoHover;
@@ -230,7 +344,7 @@ class GameBoard {
       else
         this._redoHover = false;
     } else this._redoHover = false;
-    if (oUH != this._undoHover || oRH != this._redoHover) this.drawInfoLine();
+    if (oUH != this._undoHover || oRH != this._redoHover) this.drawForeground();
   }
 
   _recalcClouds() {
@@ -287,22 +401,24 @@ class GameBoard {
    * Restart with the initial state
    */
   restart() {
+    if (this._noOps) return;
     this._stateStackIdx = 0;
     this._state = this._stateStack[this._stateStackIdx].clone();
     this._drawer.setState(this._state);
     this.extraMoveCounter += this.moveCounter;
     this.moveCounter = 0;
-    this.drawInfoLine();
+    this.drawForeground();
   }
 
   /**
    * Undo the last move irrevocably
    */
   finalUndo() {
+    if (this._noOps) return;
     if (this._stateStackIdx > 0) {
       this.undo();
       this._stateStack.pop();
-      this.drawInfoLine();
+      this.drawForeground();
     }
   }
 
@@ -310,13 +426,14 @@ class GameBoard {
    * Undo the last move
    */
   undo() {
+    if (this._noOps) return;
     if (this._stateStackIdx > 0) {
       this._stateStackIdx--;
       this._state = this._stateStack[this._stateStackIdx].clone();
       this._drawer.setState(this._state);
       this.moveCounter--;
       this.extraMoveCounter++;
-      this.drawInfoLine();
+      this.drawForeground();
     }
   }
 
@@ -324,13 +441,14 @@ class GameBoard {
    * Redo the last undone move
    */
   redo() {
+    if (this._noOps) return;
     if (this._stateStackIdx < this._stateStack.length - 1) {
       this._stateStackIdx++;
       this._state = this._stateStack[this._stateStackIdx].clone();
       this._drawer.setState(this._state);
       this.moveCounter++;
       this.extraMoveCounter--;
-      this.drawInfoLine();
+      this.drawForeground();
     }
   }
 
@@ -338,6 +456,7 @@ class GameBoard {
    * Shut this game board down -- that is, remove all game board elements from the parent element
    */
   shutDown() {
+    this._drawer.shutDown();
     for (let i=0; i<3; i++)
       this._parent.removeChild(this._canvasArr[i]);
   }
@@ -354,7 +473,7 @@ class GameBoard {
       this._canvasArr[i].height = this._height;
     }
     this._drawer.resize(0, INFO_LINE_HEIGHT, this._width, this._height - INFO_LINE_HEIGHT);
-    this.drawInfoLine();
+    this.drawForeground();
     this.drawBackground(!this._noCyclicAni);
   }
 
@@ -364,6 +483,7 @@ class GameBoard {
    * @param {number} y the y coordinate of the clicked cell in the game state array
    */
   click(x, y) {
+    if (this._noOps) return;
     const val = this._state.getVal(x, y);
     if (val > 0 && val < 32) {
       const sn = GET_SNAKE(val);
@@ -378,6 +498,7 @@ class GameBoard {
    * @param {object} event the event object
    */
   mouseWheel(event) {
+    if (this._noOps) return;
     if (event.deltaY < 0) {
       event.preventDefault();
       this._drawer.zoomIn();
@@ -392,6 +513,7 @@ class GameBoard {
    * @param {object} event the event object
    */
   press(event) {
+    if (this._noOps) return;
     const key = event.key.toLowerCase();
     const oldState = this._state.toString(); let check = false;
     if (key === 'a' || key === 'arrowleft') {
@@ -427,7 +549,7 @@ class GameBoard {
       this._stateStackIdx++;
       this._stateStack.push( this._state.clone() );
       this.moveCounter++;
-      this.drawInfoLine();
+      this.drawForeground();
     }
   }
 }

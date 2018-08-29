@@ -94,6 +94,7 @@ class GameDrawer {
     this._state = gameState;
     this._fruitPortalTargetArr = [];
     this._gameBoard = gameBoard;
+    this._isShutDown = false; // if set to true, this game drawer shouldn't do anything anymore
     this._newState = null;
     this._aniArray = null;
     this._aniEnd = 0; // 1: animate game won, -2: animate game lost, -1: animate game lost (endless loop)
@@ -139,10 +140,12 @@ class GameDrawer {
    * @param {string} newActiveSnake the character corresponding to the new active snake
    */
   setActiveSnake(newActiveSnake) {
+    if (this._isShutDown) return;
     this._activeSnake = newActiveSnake;
   }
 
   _calcBlockInfoArr() {
+    if (this._isShutDown) return;
     this._blockInfoMap = new Map();
     for (let i=0; i<this._blockQueues.length; i++) {
       this._blockInfoMap.set(this._state.blockToCharacter[i], calculateGraphicsInfo(this._blockQueues[i]));
@@ -150,6 +153,7 @@ class GameDrawer {
   }
 
   _calcFruitPortalTargetArr() {
+    if (this._isShutDown) return;
     this._fruitPortalTargetArr = [];
     for (let i=0; i<this._state.width; i++) {
       this._fruitPortalTargetArr[i] = [];
@@ -171,6 +175,7 @@ class GameDrawer {
    * @return {GameState} the new game state (or null if the move was invalid)
    */
   tryMove(snake, direction, gravity = DOWN) {
+    if (this._isShutDown) return null;
     this._currentGravity = gravity;
     if (!this._animationRunning && this._state.snakeMap.has(snake) && !this._state.gameEnded) {
       const moveRes = gameTransition(this._state, snake, direction, this._fallThrough, this._state.gravity, true, this._changeGravity, this._options);
@@ -199,6 +204,7 @@ class GameDrawer {
    * @param {GameState} state the new game state
    */
   setState(state) {
+    if (this._isShutDown) return;
     this._animationRunning = false;
     this._state = state;
     this._boardWidth = this._state.width;
@@ -222,6 +228,7 @@ class GameDrawer {
    * @param {Function} listener the event listener that will be called when the specified event occurred
    */
   addEventListener(type, listener) {
+    if (this._isShutDown) return;
     if (type === 'click') {
       this._clickListeners.push(listener);
     } else if (type === 'absolute click') {
@@ -236,6 +243,7 @@ class GameDrawer {
    * @param {object} event the event object
    */
   click(event) {
+    if (this._isShutDown) return;
     if ((new Date()).getTime() - this._mouseDownTime < 250) {
       if (!this._animationRunning) {
         let [xp, yp] = [event.clientX, event.clientY];
@@ -260,6 +268,7 @@ class GameDrawer {
    * @param {object} event the event object
    */
   mouseDown(event) {
+    if (this._isShutDown) return;
     this._mouseDownTime = (new Date()).getTime();
     this._mouseIsDown = true;
     this._lastMouseCoords = [event.clientX, event.clientY];
@@ -270,6 +279,7 @@ class GameDrawer {
    * @param {object} event the event object
    */
   mouseUp(event) {
+    if (this._isShutDown) return;
     if ((new Date()).getTime() - this._mouseDownTime >= 250) {
       this._translate(event.clientX, event.clientY);
     }
@@ -281,6 +291,7 @@ class GameDrawer {
    * @param {object} event the event object
    */
   mouseLeave(event) {
+    if (this._isShutDown) return;
     if (this._mouseIsDown && ((new Date()).getTime() - this._mouseDownTime >= 250)) {
       this._translate(event.clientX, event.clientY);
     }
@@ -292,6 +303,7 @@ class GameDrawer {
    * @param {object} event the event object
    */
   mouseMove(event) {
+    if (this._isShutDown) return;
     if (this._mouseIsDown && ((new Date()).getTime() - this._mouseDownTime >= 250)) {
       this._translate(event.clientX, event.clientY);
     }
@@ -301,6 +313,7 @@ class GameDrawer {
   }
 
   _translate(nx, ny) {
+    if (this._isShutDown) return;
     if (!this._isZooming) {
       const [w, h, ax, ay, bSize, bCoord] = this.getDimVars();
       const dx = this._lastMouseCoords[0] - nx;
@@ -320,6 +333,7 @@ class GameDrawer {
    * @param {number} height the height of the game board on the canvas
    */
   resize(x, y, width, height) {
+    if (this._isShutDown) return;
     this._x = x;
     this._y = y;
     this._width = width;
@@ -333,6 +347,7 @@ class GameDrawer {
    * @param {CanvasRenderingContext2D} con the context to apply the zoom on
    */
   _applyZoom(con) {
+    if (this._isShutDown) return;
     const [w, h, ax, ay, bSize, bCoord] = this.getDimVars();
     con.save();
     if (this._zoomLevel > 1) {
@@ -346,6 +361,7 @@ class GameDrawer {
    * Checks whether zoom and center variables are valid (not out of bounds)
    */
   _checkZoomAndCenter() {
+    if (this._isShutDown) return;
     const [w, h, ax, ay, bSize, bCoord] = this.getDimVars();
     if (this._zoomLevel * bSize > 200) this._zoomLevel = 200 / bSize;
     if (this._zoomLevel <= 1) {
@@ -367,6 +383,7 @@ class GameDrawer {
    * Zoom in
    */
   zoomIn() {
+    if (this._isShutDown) return;
     if (!this._isZooming) {
       this._oldCenterCoords = this._centerCoords.slice();
       this._oldZoom = this._zoomLevel;
@@ -388,6 +405,7 @@ class GameDrawer {
    * Zoom out
    */
   zoomOut() {
+    if (this._isShutDown) return;
     if (!this._isZooming) {
       this._oldCenterCoords = this._centerCoords.slice();
       this._oldZoom = this._zoomLevel;
@@ -418,6 +436,7 @@ class GameDrawer {
    *   of the grid cell on the canvas
    */
   getDimVars() {
+    if (this._isShutDown) return [300, 300, 0, 0, 20, (bx, by) => [bx, by]];
     const [x, y, width, height, bWidth, bHeight] = [this._x, this._y, this._width,
       this._height, this._boardWidth, this._boardHeight];
     
@@ -445,6 +464,7 @@ class GameDrawer {
    * to animate the game board
    */
   draw(isAniFrame = false) {
+    if (this._isShutDown) return;
     let undo = false;
     const [con, x, y, width, height, bWidth, bHeight] = [this._context, this._x, this._y, this._width,
       this._height, this._boardWidth, this._boardHeight];
@@ -494,7 +514,8 @@ class GameDrawer {
         const stClone = this._state.clone();
         this._snakeQueues = stClone.snakes;
         this._blockQueues = stClone.blocks;
-        if (this._aniEnd < 0) undo = true;
+        if (this._aniEnd < 0) undo = true; // lost
+        if (this._aniEnd == 1) this._gameBoard.gameWon(); // won
       } else {
         const [snakes, blocks] = [this._snakeQueues, this._blockQueues];
         const snakesB = [];
@@ -800,6 +821,7 @@ class GameDrawer {
    * @param {number} removedFruitProg a number indicating how the removed fruit should be scaled
    */
   drawBoardFront(state, con, bSize, bCoord, globalTime, globalSlowTime, removedFruitPos, removedFruitProg) {
+    if (this._isShutDown) return;
     for (let sx=0; sx<state.width; sx++) {
       for (let sy=0; sy<state.height; sy++) {
         const [bx, by] = bCoord(sx, sy);
@@ -888,6 +910,7 @@ class GameDrawer {
    * @param {number} fruitProg a number indicating how many fruits are present on the board
    */
   drawBoardBack(state, con, bSize, bCoord, globalTime, globalSlowTime, fruitProg) {
+    if (this._isShutDown) return;
     for (let i=0; i<this._state.portalPos.length; i++) {
       const [px, py] = bCoord(this._state.portalPos[i][0], this._state.portalPos[i][1]);
       drawPortalBack(con, px, py, bSize, globalTime);
@@ -938,6 +961,7 @@ class GameDrawer {
    * block in addition to ox, oy (the offsets are relative to ox, oy)
    */
   _getAllOffsets(state, x, y, off, borderArr, allOffsets = false) {
+    if (this._isShutDown) return [x, y, []];
     let [ox, oy] = [x + off[0], y + off[1]];
     const drawAt = [[0, 0]]; // if the part is at the border of the board, draw it on the other side of
     // the board as well (in case of this._fallThrough) -- this array contains additional offsets to add
@@ -1001,6 +1025,7 @@ class GameDrawer {
    * @return {number[]} the adapted nextPos array
    */
   _checkPosChange(lastPos, nextPos) {
+    if (this._isShutDown) return nextPos;
     if (Math.abs(nextPos[0] - lastPos[0]) > 1) {
       nextPos = nextPos.slice();
       if (nextPos[0] - lastPos[0] > 0) nextPos[0] = lastPos[0] - 1;
@@ -1012,5 +1037,12 @@ class GameDrawer {
       else nextPos[1] = lastPos[1] + 1;
     }
     return nextPos;
+  }
+
+  /**
+   * Shut this game drawer down -- all drawing operations will be stopped
+   */
+  shutDown() {
+    this._isShutDown = true;
   }
 }
