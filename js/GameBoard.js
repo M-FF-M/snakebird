@@ -72,6 +72,7 @@ class GameBoard {
      * @type {number}
      */
     this.extraMoveCounter = 0;
+    this._isShutDown = false; // if set to true, this game board shouldn't do anything anymore
     this._noOps = true; // if set to true, do not process any user input
     this._gameStartTime = (new Date()).getTime();
     this._gameWon = false; this._gameWonTime = 0;
@@ -87,6 +88,8 @@ class GameBoard {
     this._noCyclicAni = noCyclicAni;
     this._noAni = noAni;
     this._parent = parentElem;
+    this._wonListeners = [];
+    this._menuOpenListeners = [];
     this._clouds = [];
     this._cloudPositions = [];
     this._actualClouds = [];
@@ -166,9 +169,26 @@ class GameBoard {
   }
 
   /**
+   * Add an event listener to this game board
+   * @param {string} type a string specifying the type of event the listener should listen to. Currently,
+   * only 'game won' and 'open menu' are supported - 'game won' listeners are evoked when the user finished
+   * and won the level; 'open menu' when the user opens the menu by pressing 'Escape' or 'm'.
+   * @param {Function} listener the event listener that will be called when the specified event occurred
+   */
+  addEventListener(type, listener) {
+    if (this._isShutDown) return;
+    if (type === 'game won') {
+      this._wonListeners.push(listener);
+    } else if (type === 'open menu') {
+      this._menuOpenListeners.push(listener);
+    }
+  }
+
+  /**
    * Should be called when the user completed the level
    */
   gameWon() {
+    if (this._isShutDown) return;
     this._gameWon = true; this._gameWonTime = (new Date()).getTime();
     this._noOps = true;
     this.drawForeground(true);
@@ -178,6 +198,7 @@ class GameBoard {
    * Redraw the game board
    */
   redraw() {
+    if (this._isShutDown) return;
     this._drawer.draw();
     this.drawForeground();
     this.drawBackground(!this._noCyclicAni);
@@ -188,6 +209,7 @@ class GameBoard {
    * @param {boolean} [animate] if set to true, the call is treated as an animation frame
    */
   drawForeground(animate = false) {
+    if (this._isShutDown) return;
     const cx = this._width / 2; const cy = INFO_LINE_HEIGHT / 2;
     const con = this._canvasArr[2].getContext('2d');
     con.clearRect(0, 0, this._width, this._height);
@@ -228,7 +250,7 @@ class GameBoard {
       con.fillText('(loading fonts)', cx, cy + 0.7 * INFO_LINE_HEIGHT / 2);
     }
 
-    let continueAnimation = false; let drawCloudOverlay = 0; let gameWonTextProgr = 0;
+    let continueAnimation = false; let drawCloudOverlay = 0; let gameWonTextProgr = 0; let callWonListeners = false;
     const cTime = (new Date()).getTime();
     if (this._gameWon) {
       const timePassed = cTime - this._gameWonTime;
@@ -239,6 +261,7 @@ class GameBoard {
         if (timePassed > 2 * START_ANIMATION) drawCloudOverlay = (timePassed - 2 * START_ANIMATION) / START_ANIMATION;
       } else {
         drawCloudOverlay = 1;
+        callWonListeners = true;
       }
     } else {
       const timePassed = cTime - this._gameStartTime;
@@ -300,6 +323,11 @@ class GameBoard {
     }
     if (continueAnimation && animate)
       window.requestAnimationFrame(() => this.drawForeground(true));
+
+    if (callWonListeners) {
+      for (let i=0; i<this._wonListeners.length; i++)
+        this._wonListeners[i](this.moveCounter, this.extraMoveCounter);
+    }
   }
 
   /**
@@ -308,6 +336,7 @@ class GameBoard {
    * @param {number} y the y coordinate of the mouse
    */
   canvasClick(x, y) {
+    if (this._isShutDown) return;
     if (this._noOps) return;
     if (this._undoButtonPos.length > 0) {
       const [xa, ya] = [x - this._undoButtonPos[0], y - this._undoButtonPos[1]];
@@ -326,6 +355,7 @@ class GameBoard {
    * @param {object} event the event object
    */
   mouseMoved(event) {
+    if (this._isShutDown) return;
     if (this._noOps) return;
     const [x, y] = [event.clientX, event.clientY];
     const oUH = this._undoHover;
@@ -348,6 +378,7 @@ class GameBoard {
   }
 
   _recalcClouds() {
+    if (this._isShutDown) return;
     const sz = Math.max(this._width, this._height);
     for (let i=0; i<this._clouds.length; i++) {
       this._actualClouds.push(moveCloudArr(scaleCloudArr(this._clouds[i], sz / 5),
@@ -360,6 +391,7 @@ class GameBoard {
    * @param {boolean} [animate] whether or not to animate the clouds
    */
   drawBackground(animate = true) {
+    if (this._isShutDown) return;
     const cloud_sz = 1.3 * Math.max(this._width, this._height) / 10;
     if (this._actualClouds.length == 0) this._recalcClouds();
     const con = this._canvasArr[0].getContext('2d');
@@ -401,6 +433,7 @@ class GameBoard {
    * Restart with the initial state
    */
   restart() {
+    if (this._isShutDown) return;
     if (this._noOps) return;
     this._stateStackIdx = 0;
     this._state = this._stateStack[this._stateStackIdx].clone();
@@ -414,6 +447,7 @@ class GameBoard {
    * Undo the last move irrevocably
    */
   finalUndo() {
+    if (this._isShutDown) return;
     if (this._noOps) return;
     if (this._stateStackIdx > 0) {
       this.undo();
@@ -426,6 +460,7 @@ class GameBoard {
    * Undo the last move
    */
   undo() {
+    if (this._isShutDown) return;
     if (this._noOps) return;
     if (this._stateStackIdx > 0) {
       this._stateStackIdx--;
@@ -441,6 +476,7 @@ class GameBoard {
    * Redo the last undone move
    */
   redo() {
+    if (this._isShutDown) return;
     if (this._noOps) return;
     if (this._stateStackIdx < this._stateStack.length - 1) {
       this._stateStackIdx++;
@@ -459,12 +495,14 @@ class GameBoard {
     this._drawer.shutDown();
     for (let i=0; i<3; i++)
       this._parent.removeChild(this._canvasArr[i]);
+    this._isShutDown = true;
   }
 
   /**
    * This method will adapt the game board size to the window size
    */
   resize() {
+    if (this._isShutDown) return;
     this._actualClouds = [];
     this._width = Math.max(window.innerWidth, MIN_SIZE[0]);
     this._height = Math.max(window.innerHeight, MIN_SIZE[1]);
@@ -483,6 +521,7 @@ class GameBoard {
    * @param {number} y the y coordinate of the clicked cell in the game state array
    */
   click(x, y) {
+    if (this._isShutDown) return;
     if (this._noOps) return;
     const val = this._state.getVal(x, y);
     if (val > 0 && val < 32) {
@@ -498,6 +537,7 @@ class GameBoard {
    * @param {object} event the event object
    */
   mouseWheel(event) {
+    if (this._isShutDown) return;
     if (this._noOps) return;
     if (event.deltaY < 0) {
       event.preventDefault();
@@ -513,6 +553,7 @@ class GameBoard {
    * @param {object} event the event object
    */
   press(event) {
+    if (this._isShutDown) return;
     if (this._noOps) return;
     const key = event.key.toLowerCase();
     const oldState = this._state.toString(); let check = false;
@@ -543,6 +584,10 @@ class GameBoard {
     } else if (key === '-') {
       event.preventDefault();
       this._drawer.zoomOut();
+    } else if (key === 'escape' || key === 'm') {
+      for (let i=0; i<this._menuOpenListeners.length; i++)
+        this._menuOpenListeners[i]();
+      this._noOps = true;
     }
     if (check && oldState !== this._state.toString()) {
       while (this._stateStackIdx != this._stateStack.length - 1) this._stateStack.pop();
@@ -551,5 +596,12 @@ class GameBoard {
       this.moveCounter++;
       this.drawForeground();
     }
+  }
+
+  /**
+   * Should be called when the menu is closed
+   */
+  menuClosed() {
+    this._noOps = false;
   }
 }

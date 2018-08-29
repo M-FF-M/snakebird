@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html>
  <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>
    Snakebird
   </title>
-  <link rel="shortcut icon" href="snakebird.ico">
+  <link rel="shortcut icon" href="snakebird.ico" />
   <script language="javascript" type="text/javascript">
    //<!--
 
@@ -37,10 +37,11 @@
   <script language="javascript" type="text/javascript" src="js/graphics/mountain.js"></script>
   <script language="javascript" type="text/javascript" src="js/GameDrawer.js"></script>
   <script language="javascript" type="text/javascript" src="js/GameBoard.js"></script>
+  <script language="javascript" type="text/javascript" src="js/LevelSelector.js"></script>
   <script language="javascript" type="text/javascript">
    //<!--
 
-    let board, htmlWasLoaded = false, fontWasLoaded = false;
+    let levelSel, htmlWasLoaded = false, fontWasLoaded = false;
 
     WebFont.load({
       google: {
@@ -51,19 +52,22 @@
 
     function fontsLoaded() {
       FONTS_WERE_LOADED = true;
-      if (board) board.redraw();
+      if (levelSel) levelSel.redraw();
     }
 
     function main() {
-      if (!board)
-        board = fromLevelDescription(document.body, dev_levels[3]);
+      if (!levelSel)
+        levelSel = new LevelSelector(document.body, [
+          new LevelCollection('Snakebird Original', std_levels),
+          new LevelCollection('Development Levels', dev_levels)
+        ]);
     }
 
     document.addEventListener('DOMContentLoaded', () => main());
 
    //-->
   </script>
-  <!--<link rel="stylesheet" type="text/css" href="XXX.css">-->
+  <link rel="stylesheet" type="text/css" href="css/level-selector.css" />
   <style type="text/css">
    
   </style>
