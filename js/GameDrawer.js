@@ -57,7 +57,7 @@ class GameDrawer {
    * @param {number} width the width of the (visible) game board
    * @param {number} height the height of the (visible) game board
    * @param {GameState} gameState the game state
-   * @param {GameBoard} gameBoard the game board
+   * @param {GameBoard} [gameBoard] the game board
    * @param {boolean} [fallThrough] whether the objects that fall out of the board appear again
    * on the other side of the board
    * @param {boolean} [changeGravity] whether to change the direction of gravity in clockwise order
@@ -67,12 +67,16 @@ class GameDrawer {
    * if the object blocking its path is moved at the same time
    * @param {boolean} [options.allowTailBiting] if allowMovingWithoutSpace is set to true, but this
    * parameter is set to false, a snake can move without space if it is not blocking itself
+   * @param {boolean} [options.dontDrawTarget] if set to true, the target won't be drawn
+   * @param {boolean} [options.dontDraw2ndPortal] if set to true, the 2nd portal won't be drawn
+   * @param {boolean} [options.dontUseMargin] if set to true, no margin around the board is used
    * @param {boolean} [noCyclicAni] whether or not to animate grass, clouds etc.
    * @param {boolean} [noAni] whether or not to animate falling snakes
    */
-  constructor(canvas, x, y, width, height, gameState, gameBoard, fallThrough = false,
+  constructor(canvas, x, y, width, height, gameState, gameBoard = null, fallThrough = false,
       changeGravity = false, options = {}, noCyclicAni = false, noAni = false) {
-    const { allowMovingWithoutSpace = false, allowTailBiting = false } = options;
+    const { allowMovingWithoutSpace = false, allowTailBiting = false,
+      dontDrawTarget = false, dontDraw2ndPortal = false, dontUseMargin = false } = options;
     this._options = { allowMovingWithoutSpace, allowTailBiting };
     this._activeSnake = gameState.snakeToCharacter[0];
     this.draw = this.draw.bind(this);
@@ -107,6 +111,9 @@ class GameDrawer {
     this._animationRunning = false;
     this._noCyclicAni = noCyclicAni;
     this._noAni = noAni;
+    this._dontDrawTarget = dontDrawTarget; // if set to true, the target won't be drawn
+    this._dontDraw2ndPortal = dontDraw2ndPortal; // if set to true, the 2nd portal won't be drawn
+    this._dontUseMargin = dontUseMargin; // if set to true, there is no margin around the board
     const stClone = this._state.clone();
     this._snakeQueues = stClone.snakes;
     this._blockQueues = stClone.blocks;
@@ -136,11 +143,24 @@ class GameDrawer {
   }
 
   /**
+   * Set the don't draw variables
+   * @param {boolean} dontDrawTarget if set to true, the target won't be drawn
+   * @param {boolean} dontDraw2ndPortal if set to true, the 2nd portal won't be drawn
+   */
+  setDontDraws(dontDrawTarget, dontDraw2ndPortal) {
+    if (this._isShutDown) return;
+    this._dontDrawTarget = dontDrawTarget;
+    this._dontDraw2ndPortal = dontDraw2ndPortal;
+    this.draw();
+  }
+
+  /**
    * Set the animation variables
    * @param {boolean} [noCyclicAni] whether or not to animate grass, clouds etc.
    * @param {boolean} [noAni] whether or not to animate falling snakes
    */
   setAniVars(noCyclicAni = false, noAni = false) {
+    if (this._isShutDown) return;
     const oldNoCyclicAni = this._noCyclicAni;
     this._noCyclicAni = noCyclicAni;
     this._noAni = noAni;
@@ -452,12 +472,14 @@ class GameDrawer {
     const [x, y, width, height, bWidth, bHeight] = [this._x, this._y, this._width,
       this._height, this._boardWidth, this._boardHeight];
     
+    let margin = MARGIN;
+    if (this._dontUseMargin) margin = 0;
     let w, h;
-    if (bWidth / bHeight > (width - 2 * MARGIN) / (height - 2 * MARGIN)) {
-      w = width - 2 * MARGIN;
+    if (bWidth / bHeight > (width - 2 * margin) / (height - 2 * margin)) {
+      w = width - 2 * margin;
       h = w * (bHeight / bWidth);
     } else {
-      h = height - 2 * MARGIN;
+      h = height - 2 * margin;
       w = h * (bWidth / bHeight);
     }
     const ax = x + width / 2 - w / 2;
@@ -527,7 +549,7 @@ class GameDrawer {
         this._snakeQueues = stClone.snakes;
         this._blockQueues = stClone.blocks;
         if (this._aniEnd < 0) undo = true; // lost
-        if (this._aniEnd == 1) this._gameBoard.gameWon(); // won
+        if (this._aniEnd == 1 && this._gameBoard !== null) this._gameBoard.gameWon(); // won
       } else {
         const [snakes, blocks] = [this._snakeQueues, this._blockQueues];
         const snakesB = [];
@@ -770,38 +792,40 @@ class GameDrawer {
     con3.restore();
 
     // check if target is visible
-    let [atx, aty] = [
-      ((state.target[0] + 0.5) / state.width - this._centerCoords[0]) * w * this._zoomLevel + ax + 0.5 * w,
-      ((state.target[1] + 0.5) / state.height - this._centerCoords[1]) * h * this._zoomLevel + ay + 0.5 * h];
-    if (atx < this._x || aty < this._y || atx - this._x >= this._width || aty - this._y >= this._height) {
-      const bbSize = bSize * this._zoomLevel;
-      const [otx, oty] = [atx, aty];
-      if (atx < this._x + bbSize * (0.5 * SQRT_2)) atx = this._x + bbSize * (0.5 * SQRT_2);
-      if (aty < this._y + bbSize * (0.5 * SQRT_2)) aty = this._y + bbSize * (0.5 * SQRT_2);
-      if (atx - this._x > this._width - bbSize * (0.5 * SQRT_2)) atx = this._x + this._width - bbSize * (0.5 * SQRT_2);
-      if (aty - this._y > this._height - bbSize * (0.5 * SQRT_2)) aty = this._y + this._height - bbSize * (0.5 * SQRT_2);
-      const ang = Math.atan2(oty - aty, otx - atx);
-      const angA = ang + 0.25 * Math.PI; const angB = ang - 0.25 * Math.PI;
-      const middlex = Math.cos(ang); const middley = Math.sin(ang);
-      let osc = Math.sin(Math.PI * (globalTime % 0.5) / 0.5); osc *= osc;
-      const [addx, addy] = [-osc * middlex * bbSize * 0.2, -osc * middley * bbSize * 0.2];
-      con.fillStyle = 'rgba(255, 255, 255, 1)';
-      con.beginPath();
-      con.arc(atx + addx, aty + addy, bbSize * 0.4, 0, 2 * Math.PI);
-      con.closePath();
-      con.fill();
-      con.beginPath();
-      con.moveTo(atx + addx, aty + addy);
-      con.lineTo(atx + addx + Math.cos(angA) * bbSize * 0.4, aty + addy + Math.sin(angA) * bbSize * 0.4);
-      con.lineTo(atx + addx + middlex * bbSize * 0.4 * SQRT_2, aty + addy + middley * bbSize * 0.4 * SQRT_2);
-      con.lineTo(atx + addx + Math.cos(angB) * bbSize * 0.4, aty + addy + Math.sin(angB) * bbSize * 0.4);
-      con.lineTo(atx + addx, aty + addy);
-      con.closePath();
-      con.fill();
-      drawTarget(con, this._canvas, atx + addx, aty + addy, bbSize / 4, globalSlowTime, fruitProg);
+    if (!this._dontDrawTarget) {
+      let [atx, aty] = [
+        ((state.target[0] + 0.5) / state.width - this._centerCoords[0]) * w * this._zoomLevel + ax + 0.5 * w,
+        ((state.target[1] + 0.5) / state.height - this._centerCoords[1]) * h * this._zoomLevel + ay + 0.5 * h];
+      if (atx < this._x || aty < this._y || atx - this._x >= this._width || aty - this._y >= this._height) {
+        const bbSize = bSize * this._zoomLevel;
+        const [otx, oty] = [atx, aty];
+        if (atx < this._x + bbSize * (0.5 * SQRT_2)) atx = this._x + bbSize * (0.5 * SQRT_2);
+        if (aty < this._y + bbSize * (0.5 * SQRT_2)) aty = this._y + bbSize * (0.5 * SQRT_2);
+        if (atx - this._x > this._width - bbSize * (0.5 * SQRT_2)) atx = this._x + this._width - bbSize * (0.5 * SQRT_2);
+        if (aty - this._y > this._height - bbSize * (0.5 * SQRT_2)) aty = this._y + this._height - bbSize * (0.5 * SQRT_2);
+        const ang = Math.atan2(oty - aty, otx - atx);
+        const angA = ang + 0.25 * Math.PI; const angB = ang - 0.25 * Math.PI;
+        const middlex = Math.cos(ang); const middley = Math.sin(ang);
+        let osc = Math.sin(Math.PI * (globalTime % 0.5) / 0.5); osc *= osc;
+        const [addx, addy] = [-osc * middlex * bbSize * 0.2, -osc * middley * bbSize * 0.2];
+        con.fillStyle = 'rgba(255, 255, 255, 1)';
+        con.beginPath();
+        con.arc(atx + addx, aty + addy, bbSize * 0.4, 0, 2 * Math.PI);
+        con.closePath();
+        con.fill();
+        con.beginPath();
+        con.moveTo(atx + addx, aty + addy);
+        con.lineTo(atx + addx + Math.cos(angA) * bbSize * 0.4, aty + addy + Math.sin(angA) * bbSize * 0.4);
+        con.lineTo(atx + addx + middlex * bbSize * 0.4 * SQRT_2, aty + addy + middley * bbSize * 0.4 * SQRT_2);
+        con.lineTo(atx + addx + Math.cos(angB) * bbSize * 0.4, aty + addy + Math.sin(angB) * bbSize * 0.4);
+        con.lineTo(atx + addx, aty + addy);
+        con.closePath();
+        con.fill();
+        drawTarget(con, this._canvas, atx + addx, aty + addy, bbSize / 4, globalSlowTime, fruitProg);
+      }
     }
 
-    this._gameBoard.drawBackground(!this._noCyclicAni);
+    if (this._gameBoard !== null) this._gameBoard.drawBackground(!this._noCyclicAni);
 
     if (!TURN_OFF_CYCLIC_ANIMATIONS) {
       if (isAniFrame && !this._noCyclicAni) {
@@ -815,7 +839,7 @@ class GameDrawer {
       }
     }
 
-    if (undo) this._gameBoard.finalUndo();
+    if (undo && this._gameBoard !== null) this._gameBoard.finalUndo();
   }
 
   /**
@@ -881,7 +905,8 @@ class GameDrawer {
     }
     for (let i=0; i<this._state.portalPos.length; i++) {
       const [px, py] = bCoord(this._state.portalPos[i][0], this._state.portalPos[i][1]);
-      drawPortalFront(con, px, py, bSize, globalSlowTime);
+      if (i == 0 || !this._dontDraw2ndPortal)
+        drawPortalFront(con, px, py, bSize, globalSlowTime);
     }
     // draw grass on top
     for (let sx=0; sx<state.width; sx++) {
@@ -925,10 +950,12 @@ class GameDrawer {
     if (this._isShutDown) return;
     for (let i=0; i<this._state.portalPos.length; i++) {
       const [px, py] = bCoord(this._state.portalPos[i][0], this._state.portalPos[i][1]);
-      drawPortalBack(con, px, py, bSize, globalTime);
+      if (i == 0 || !this._dontDraw2ndPortal)
+        drawPortalBack(con, px, py, bSize, globalTime);
     }
     const [tx, ty] = bCoord(this._state.target[0], this._state.target[1]);
-    drawTarget(con, this._canvas, tx, ty, bSize, globalSlowTime, fruitProg, this._applyZoom);
+    if (!this._dontDrawTarget)
+      drawTarget(con, this._canvas, tx, ty, bSize, globalSlowTime, fruitProg, this._applyZoom);
     for (let sx=0; sx<state.width; sx++) {
       for (let sy=0; sy<state.height; sy++) {
         const [bx, by] = bCoord(sx, sy);

@@ -32,6 +32,115 @@ function fromLevelDescription(parentElem, obj, noCyclicAni = false, noAni = fals
 }
 
 /**
+ * Generate an array with random mountains
+ * @param {number} small the number of small mountains
+ * @param {number} medium the number of medium-sized mountains
+ * @param {number} large the number of large mountains
+ * @return {any[]} an array with the mountain information
+ */
+function generateMountainArr(small, medium, large) {
+  const mountainArr = [];
+  for (let i=0; i<small + medium + large; i++) {
+    let randPosX = 0;
+    let randVar = 0.25;
+    if (i < small) randVar = 0.125;
+    if (i < small) randPosX = (i + 0.5) / small + (Math.random() * randVar - randVar * 0.5);
+    else if (i < small + medium)
+      randPosX = (i - small + 0.5) / medium + (Math.random() * randVar - randVar * 0.5);
+    else randPosX = (i - small - medium + 0.5) / large + (Math.random() * randVar - randVar * 0.5);
+    mountainArr.push([randPosX, generateMountain(5 + Math.floor(Math.random() * 5), i >= 7)]);
+  }
+  return mountainArr;
+}
+
+/**
+ * Generate an array with random clouds
+ * @return {any[]} an array with the cloud information
+ */
+function generateCloudArr() {
+  const clouds = [], cloudPositions = [];
+  for (let i=0; i<12; i++) {
+    clouds.push(generateCloud(0.7 + Math.random() * 0.6, 12 + Math.floor(Math.random() * 7)));
+    let randPosX = 0, randPosY = 0;
+    if (i < 6) {
+      randPosX = (i + 0.5) / 6 + (Math.random() * 0.125 - 0.01625);
+      randPosY = 0.2 + Math.random() * 0.4;
+    } else {
+      randPosX = (i - 5.5) / 6 + (Math.random() * 0.125 - 0.01625);
+      randPosY = 0.1 + Math.random() * 0.3;
+    }
+    cloudPositions.push([randPosX, randPosY]);
+  }
+  return [clouds, cloudPositions];
+}
+
+/**
+ * Calculate the cloud array necessary for drawing the clouds
+ * @param {number} width the width of the canvas
+ * @param {number} height the height of the canvas
+ * @param {any[]} clouds array returned by generateCloudArr() at index 0
+ * @param {any[]} cloudPositions array returned by generateCloudArr() at index 1
+ * @return {any[]} an array with the cloud information
+ */
+function calcActClouds(width, height, clouds, cloudPositions) {
+  const actualClouds = [];
+  const sz = Math.max(width, height);
+  for (let i=0; i<clouds.length; i++) {
+    actualClouds.push(moveCloudArr(scaleCloudArr(clouds[i], sz / 5),
+      0, cloudPositions[i][1] * height));
+  }
+  return actualClouds;
+}
+
+/**
+ * Draw clouds and mountains
+ * @param {CanvasRenderingContext2D} con the context of the canvas the clouds should be drawn on
+ * @param {number} width the width of the canvas
+ * @param {number} height the height of the canvas
+ * @param {any[]} actualClouds array returned by calcActClouds()
+ * @param {any[]} cloudPositions array returned by generateCloudArr() at index 1
+ * @param {any[]} mountainArr array returned by generateMountainArr()
+ * @param {number} small the number of small mountains
+ * @param {number} medium the number of medium-sized mountains
+ * @param {boolean} [animate] whether or not to animate the clouds
+ */
+function drawCloudsAndMountains(con, width, height, actualClouds, cloudPositions, mountainArr, small, medium, animate = false) {
+  const cloud_sz = 1.3 * Math.max(width, height) / 10;
+  con.clearRect(0, 0, width, height);
+  let bgGrad = con.createLinearGradient(0, 0, 0, height);
+  bgGrad.addColorStop(0, 'rgba(76, 174, 236, 1)');
+  bgGrad.addColorStop(1, 'rgba(188, 232, 251, 1)');
+  con.fillStyle = bgGrad;
+  con.fillRect(0, 0, width, height);
+
+  let aMove = ( ((new Date()).getTime() % 50000) / 50000 ) * (width + 2 * cloud_sz);
+  let bMove = ( ((new Date()).getTime() % 80000) / 80000 ) * (width + 2 * cloud_sz);
+  if (!animate) aMove = bMove = 0;
+
+  for (let i=0; i<actualClouds.length; i++) {
+    let xp = cloudPositions[i][0] * (width + 2 * cloud_sz);
+    if (i < 6) con.fillStyle = 'rgba(211, 239, 250, 1)';
+    else con.fillStyle = 'rgba(255, 255, 255, 1)';
+    if (i < 6) xp += bMove;
+    else xp += aMove;
+    xp %= width + 2 * cloud_sz; xp -= cloud_sz;
+    drawCloudPath(con, actualClouds[i], xp);
+    con.fill();
+  }
+
+  const mountain_sz = Math.max(width, height) / 6;
+  const yp = height;
+  for (let i=0; i<mountainArr.length; i++) {
+    const xp = mountainArr[i][0] * width;
+    if (i < small) con.fillStyle = 'rgba(143, 213, 247, 1)';
+    else if (i < small + medium) con.fillStyle = 'rgba(120, 199, 243, 1)';
+    else con.fillStyle = 'rgba(76, 176, 241, 1)';
+    drawMountainPath(con, mountainArr[i][1], xp, yp, mountain_sz, mountain_sz * 1.3);
+    con.fill();
+  }
+}
+
+/**
  * Represents a snake bird game board
  */
 class GameBoard {
@@ -90,35 +199,14 @@ class GameBoard {
     this._parent = parentElem;
     this._wonListeners = [];
     this._menuOpenListeners = [];
-    this._clouds = [];
-    this._cloudPositions = [];
+    const [clouds, cloudPositions] = generateCloudArr();
+    this._clouds = clouds;
+    this._cloudPositions = cloudPositions;
     this._actualClouds = [];
-    this._mountainArr = [];
-    for (let i=0; i<12; i++) {
-      this._clouds.push(generateCloud(0.7 + Math.random() * 0.6, 12 + Math.floor(Math.random() * 7)));
-      let randPosX = 0, randPosY = 0;
-      if (i < 6) {
-        randPosX = (i + 0.5) / 6 + (Math.random() * 0.125 - 0.01625);
-        randPosY = 0.2 + Math.random() * 0.4;
-      } else {
-        randPosX = (i - 5.5) / 6 + (Math.random() * 0.125 - 0.01625);
-        randPosY = 0.1 + Math.random() * 0.3;
-      }
-      this._cloudPositions.push([randPosX, randPosY]);
-    }
     this._smallMountains = 7;
     this._mediumMountains = 5;
     this._largeMountains = 4;
-    for (let i=0; i<this._smallMountains + this._mediumMountains + this._largeMountains; i++) {
-      let randPosX = 0;
-      let randVar = 0.25;
-      if (i < this._smallMountains) randVar = 0.125;
-      if (i < this._smallMountains) randPosX = (i + 0.5) / this._smallMountains + (Math.random() * randVar - randVar * 0.5);
-      else if (i < this._smallMountains + this._mediumMountains)
-        randPosX = (i - this._smallMountains + 0.5) / this._mediumMountains + (Math.random() * randVar - randVar * 0.5);
-      else randPosX = (i - this._smallMountains - this._mediumMountains + 0.5) / this._largeMountains + (Math.random() * randVar - randVar * 0.5);
-      this._mountainArr.push([randPosX, generateMountain(5 + Math.floor(Math.random() * 5), i >= 7)]);
-    }
+    this._mountainArr = generateMountainArr(this._smallMountains, this._mediumMountains, this._largeMountains);
     this._cloudOverlayPoints = 8;
     this._cloudOverlayArr = []; // [angle, radScale, leftAng, rightAng, leftSc, rightSc]
     for (let i=0; i<4; i++) {
@@ -388,11 +476,7 @@ class GameBoard {
 
   _recalcClouds() {
     if (this._isShutDown) return;
-    const sz = Math.max(this._width, this._height);
-    for (let i=0; i<this._clouds.length; i++) {
-      this._actualClouds.push(moveCloudArr(scaleCloudArr(this._clouds[i], sz / 5),
-        0, this._cloudPositions[i][1] * this._height));
-    }
+    this._actualClouds = calcActClouds(this._width, this._height, this._clouds, this._cloudPositions);
   }
 
   /**
@@ -401,41 +485,10 @@ class GameBoard {
    */
   drawBackground(animate = true) {
     if (this._isShutDown) return;
-    const cloud_sz = 1.3 * Math.max(this._width, this._height) / 10;
     if (this._actualClouds.length == 0) this._recalcClouds();
     const con = this._canvasArr[0].getContext('2d');
-    con.clearRect(0, 0, this._width, this._height);
-    let bgGrad = con.createLinearGradient(0, 0, 0, this._height);
-    bgGrad.addColorStop(0, 'rgba(76, 174, 236, 1)');
-    bgGrad.addColorStop(1, 'rgba(188, 232, 251, 1)');
-    con.fillStyle = bgGrad;
-    con.fillRect(0, 0, this._width, this._height);
-
-    let aMove = ( ((new Date()).getTime() % 50000) / 50000 ) * (this._width + 2 * cloud_sz);
-    let bMove = ( ((new Date()).getTime() % 80000) / 80000 ) * (this._width + 2 * cloud_sz);
-    if (!animate) aMove = bMove = 0;
-
-    for (let i=0; i<this._actualClouds.length; i++) {
-      let xp = this._cloudPositions[i][0] * (this._width + 2 * cloud_sz);
-      if (i < 6) con.fillStyle = 'rgba(211, 239, 250, 1)';
-      else con.fillStyle = 'rgba(255, 255, 255, 1)';
-      if (i < 6) xp += bMove;
-      else xp += aMove;
-      xp %= this._width + 2 * cloud_sz; xp -= cloud_sz;
-      drawCloudPath(con, this._actualClouds[i], xp);
-      con.fill();
-    }
-
-    const mountain_sz = Math.max(this._width, this._height) / 6;
-    const yp = this._height;
-    for (let i=0; i<this._mountainArr.length; i++) {
-      const xp = this._mountainArr[i][0] * this._width;
-      if (i < this._smallMountains) con.fillStyle = 'rgba(143, 213, 247, 1)';
-      else if (i < this._smallMountains + this._mediumMountains) con.fillStyle = 'rgba(120, 199, 243, 1)';
-      else con.fillStyle = 'rgba(76, 176, 241, 1)';
-      drawMountainPath(con, this._mountainArr[i][1], xp, yp, mountain_sz, mountain_sz * 1.3);
-      con.fill();
-    }
+    drawCloudsAndMountains(con, this._width, this._height, this._actualClouds, this._cloudPositions, this._mountainArr,
+      this._smallMountains, this._mediumMountains, animate);
   }
 
   /**

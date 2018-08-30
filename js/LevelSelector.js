@@ -45,8 +45,10 @@ class LevelSelector {
     this.closeMenu = this.closeMenu.bind(this);
     this.cyclicAnis = this.cyclicAnis.bind(this);
     this.anis = this.anis.bind(this);
+    this.openEditor = this.openEditor.bind(this);
     this._parent = parentElem;
     this._lvlCollections = levelCollections;
+    this._isShutDown = false;
 
     this._parentDiv = document.createElement('div');
     this._parentDiv.style.position = 'absolute';
@@ -73,6 +75,7 @@ class LevelSelector {
 
     window.addEventListener('resize', this.resize);
     this._cGameBoard = null;
+    this._lvlEditor = null;
     this.resize();
     this.rebuildHTML();
   }
@@ -81,6 +84,7 @@ class LevelSelector {
    * Create the HTML structure for this level selector
    */
   rebuildHTML() {
+    if (this._isShutDown) return;
     const toRainbow = text => {
       let ret = '';
       let cIdx = 0;
@@ -105,17 +109,26 @@ class LevelSelector {
       ['Level Collections', '#cols'],
       ['Instructions', '#instr'],
       ['Controls', '#controls'],
-      ['Credits', '#creds']
+      ['Credits', '#creds'],
+      ['Level Editor', () => this.openEditor()]
     ];
     for (let i=0; i<mainMenuButtons.length; i++) {
-      const aMenu = document.createElement('a');
-      aMenu.setAttribute('href', mainMenuButtons[i][1]);
+      let aMenu;
+      if (typeof mainMenuButtons[i][1] === 'string') {
+        aMenu = document.createElement('a');
+        aMenu.setAttribute('href', mainMenuButtons[i][1]);
+      }
       const menButton = document.createElement('input');
       menButton.setAttribute('type', 'button');
       menButton.setAttribute('value', mainMenuButtons[i][0]);
       menButton.setAttribute('class', 'lvl-col-button');
-      aMenu.appendChild(menButton);
-      this._containerDiv.appendChild(aMenu);
+      if (typeof mainMenuButtons[i][1] === 'string') {
+        aMenu.appendChild(menButton);
+        this._containerDiv.appendChild(aMenu);
+      } else {
+        menButton.addEventListener('click', mainMenuButtons[i][1]);
+        this._containerDiv.appendChild(menButton);
+      }
     }
 
     const aCols = document.createElement('a');
@@ -284,10 +297,28 @@ class LevelSelector {
   }
 
   /**
+   * Opens the level editor
+   */
+  openEditor() {
+    this._parentDiv.style.display = 'none';
+    if (this._lvlEditor === null) this._lvlEditor = new LevelEditor(document.body, this);
+    this._lvlEditor.show();
+  }
+
+  /**
+   * Closes the level editor
+   */
+  closeEditor() {
+    this._parentDiv.style.display = 'block';
+    this._lvlEditor.hide();
+  }
+
+  /**
    * Whether cyclic animations should be played
    * @param {boolean} value if set to true, cyclic animations will be played
    */
   cyclicAnis(value) {
+    if (this._isShutDown) return;
     STORAGE.set('noCyclicAni', !value);
     this._updateAniVars();
   }
@@ -297,11 +328,13 @@ class LevelSelector {
    * @param {boolean} value if set to true, movement animations will be played
    */
   anis(value) {
+    if (this._isShutDown) return;
     STORAGE.set('noAni', !value);
     this._updateAniVars();
   }
 
   _updateAniVars() {
+    if (this._isShutDown) return;
     if (this._cGameBoard != null) this._cGameBoard.setAniVars(STORAGE.get('noCyclicAni'), STORAGE.get('noAni'));
   }
 
@@ -309,6 +342,7 @@ class LevelSelector {
    * Redraw the current game board
    */
   redraw() {
+    if (this._isShutDown) return;
     if (this._cGameBoard != null) this._cGameBoard.redraw();
   }
 
@@ -318,6 +352,7 @@ class LevelSelector {
    * @param {number} idx the index of the level in the collection
    */
   openLevel(col, idx) {
+    if (this._isShutDown) return;
     this._parentDiv.style.display = 'none';
     this._cGameBoard = fromLevelDescription(document.body, this._lvlCollections[col].levels[idx], STORAGE.get('noCyclicAni'), STORAGE.get('noAni'));
     this._cGameBoard.addEventListener('game won', () => this.levelWon());
@@ -328,6 +363,7 @@ class LevelSelector {
    * Open the level pause menu
    */
   openMenu() {
+    if (this._isShutDown) return;
     this._menuParentDiv.style.display = 'block';
   }
 
@@ -335,6 +371,7 @@ class LevelSelector {
    * Close the level pause menu
    */
   closeMenu() {
+    if (this._isShutDown) return;
     this._menuParentDiv.style.display = 'none';
     if (this._cGameBoard != null) this._cGameBoard.menuClosed();
   }
@@ -343,6 +380,7 @@ class LevelSelector {
    * Should be called when the user aborts the level
    */
   returnToMainMenu() {
+    if (this._isShutDown) return;
     this.closeMenu();
     this.levelFinished();
   }
@@ -353,6 +391,7 @@ class LevelSelector {
    * @param {number} undoneMoves the number of moves that were undone
    */
   levelWon(moves, undoneMoves) {
+    if (this._isShutDown) return;
     this.levelFinished();
   }
 
@@ -360,6 +399,7 @@ class LevelSelector {
    * Should be called when the user exited the level (won or aborted)
    */
   levelFinished() {
+    if (this._isShutDown) return;
     this._cGameBoard.shutDown();
     this._parentDiv.style.display = 'block';
     this._cGameBoard = null;
@@ -369,6 +409,7 @@ class LevelSelector {
    * This method will adapt the level selector size to the window size
    */
   resize() {
+    if (this._isShutDown) return;
     this._width = Math.max(window.innerWidth, LS_MIN_SIZE[0]);
     this._height = Math.max(window.innerHeight, LS_MIN_SIZE[1]);
 
@@ -392,6 +433,9 @@ class LevelSelector {
    */
   shutDown() {
     if (this._cGameBoard != null) this._cGameBoard.shutDown();
+    if (this._lvlEditor != null) this._lvlEditor.shutDown();
     this._parent.removeChild(this._parentDiv);
+    this._parent.removeChild(this._menuParentDiv);
+    this._isShutDown = true;
   }
 }

@@ -164,13 +164,13 @@ div.bordered-text, .lvl-menu-checkbox-label {
   background-color: rgba(78, 168, 188, 1);
 }
 
-.lvl-menu-inner-container, .lvl-sel-inner-container {
+.lvl-menu-inner-container, .lvl-sel-inner-container, .lvl-edit-inner-container {
   padding: 3em;
   margin-left: auto;
   margin-right: auto;
 }
 
-.lvl-sel-outer-container {
+.lvl-sel-outer-container, .lvl-edit-outer-container {
   background-image: url(background.png);
   background-size: cover;
   background-position: center center;
