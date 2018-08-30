@@ -23,25 +23,6 @@ h1, h2 {
      0.07em  0.07em 0em rgba(114, 35, 61, 1);
 }
 
-div.bordered-text {
-  max-width: 40em;
-  margin-left: auto;
-  margin-right: auto;
-  margin-bottom: 2em;
-  letter-spacing: 0.05em;
-  text-align: center;
-  color: rgba(255, 255, 255, 1);
-  text-shadow:
-     -0.1em     0em 0em rgba(55, 117, 161, 1),  
-      0.1em     0em 0em rgba(55, 117, 161, 1),
-        0em  -0.1em 0em rgba(55, 117, 161, 1),
-        0em   0.1em 0em rgba(55, 117, 161, 1),
-    -0.07em -0.07em 0em rgba(55, 117, 161, 1),  
-     0.07em -0.07em 0em rgba(55, 117, 161, 1),
-    -0.07em  0.07em 0em rgba(55, 117, 161, 1),
-     0.07em  0.07em 0em rgba(55, 117, 161, 1);
-}
-
 h1 .s1 { color: rgba(255, 146, 82, 1); }
 h1 .s2 { color: rgba(242, 234, 82, 1); }
 h1 .s3 { color: rgba(103, 255, 104, 1); }
@@ -54,6 +35,68 @@ h2 {
   text-align: center;
   font-size: 2.5em;
   color: rgba(255, 255, 255, 1);
+}
+
+div.bordered-text {
+  max-width: 40em;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 2em;
+  letter-spacing: 0.05em;
+  text-align: center;
+  color: rgba(255, 255, 255, 1);
+}
+
+div.bordered-text, .lvl-menu-checkbox-label {
+  text-shadow:
+     -0.1em     0em 0em rgba(55, 117, 161, 1),  
+      0.1em     0em 0em rgba(55, 117, 161, 1),
+        0em  -0.1em 0em rgba(55, 117, 161, 1),
+        0em   0.1em 0em rgba(55, 117, 161, 1),
+    -0.07em -0.07em 0em rgba(55, 117, 161, 1),  
+     0.07em -0.07em 0em rgba(55, 117, 161, 1),
+    -0.07em  0.07em 0em rgba(55, 117, 161, 1),
+     0.07em  0.07em 0em rgba(55, 117, 161, 1);
+}
+
+.lvl-menu-checkbox-label {
+  display: block;
+  margin-bottom: 1em;
+  text-align: center;
+  color: rgba(199, 236, 255, 1);
+}
+
+.lvl-menu-checkbox-label:hover {
+  color: rgba(255, 255, 255, 1);
+}
+
+.lvl-menu-checkbox {
+  display: none;
+}
+
+.lvl-menu-checkbox-label::before {
+  display: inline-block;
+  height: 1.5em;
+  width: 1.5em;
+  margin-right: 1em;
+  position: relative;
+  top: 0.3em;
+}
+
+.lvl-menu-checkbox + .lvl-menu-checkbox-label::before {
+  content: url(box-not-checked-blue.svg);
+}
+
+.lvl-menu-checkbox:checked + .lvl-menu-checkbox-label::before {
+  content: url(box-checked-blue.svg);
+}
+
+.lvl-menu-checkbox + .lvl-menu-checkbox-label:hover::before {
+  content: url(box-not-checked.svg);
+}
+
+.lvl-menu-checkbox:checked + .lvl-menu-checkbox-label:hover::before {
+  content: url(box-checked.svg);
 }
 
 .info-icon {
@@ -108,6 +151,11 @@ h2 {
 
 .lvl-sel-collection tr {
   background-color: rgba(78, 168, 188, 0);
+  -moz-user-select: none;
+  user-select: none;
+}
+
+.lvl-menu-checkbox-label {
   -moz-user-select: none;
   user-select: none;
 }

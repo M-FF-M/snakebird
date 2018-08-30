@@ -43,6 +43,8 @@ class LevelSelector {
     this.levelWon = this.levelWon.bind(this);
     this.returnToMainMenu = this.returnToMainMenu.bind(this);
     this.closeMenu = this.closeMenu.bind(this);
+    this.cyclicAnis = this.cyclicAnis.bind(this);
+    this.anis = this.anis.bind(this);
     this._parent = parentElem;
     this._lvlCollections = levelCollections;
 
@@ -51,7 +53,7 @@ class LevelSelector {
     this._parentDiv.style.left = '0px';
     this._parentDiv.style.top = '0px';
     this._parentDiv.style.zIndex = '10';
-    this._parentDiv.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
+    this._parentDiv.style.backgroundColor = 'rgba(255, 255, 255, 1)';
     this._parentDiv.style.overflow = 'auto';
     this._parentDiv.style.fontFamily = '\'Fredoka One\'';
     this._parentDiv.setAttribute('class', 'lvl-sel-outer-container');
@@ -62,7 +64,7 @@ class LevelSelector {
     this._menuParentDiv.style.left = '0px';
     this._menuParentDiv.style.top = '0px';
     this._menuParentDiv.style.zIndex = '11';
-    this._menuParentDiv.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
+    this._menuParentDiv.style.backgroundImage = 'linear-gradient(rgba(255, 255, 255, 1) 10%, rgba(255, 255, 255, 0) 90%)';
     this._menuParentDiv.style.overflow = 'auto';
     this._menuParentDiv.style.fontFamily = '\'Fredoka One\'';
     this._menuParentDiv.style.display = 'none';
@@ -256,6 +258,51 @@ class LevelSelector {
       button.addEventListener('click', menuActions[i][1]);
       this._menuContainerDiv.appendChild(button);
     }
+    
+    const menuH2 = document.createElement('h2');
+    menuH2.innerHTML = 'Settings';
+    this._menuContainerDiv.appendChild(menuH2);
+    const toggleActions = [
+      ['Cyclic animations', checked => this.cyclicAnis(checked), !STORAGE.get('noCyclicAni')],
+      ['Movement animations', checked => this.anis(checked), !STORAGE.get('noAni')]
+    ];
+    for (let i=0; i<toggleActions.length; i++) {
+      const checkbox = document.createElement('input');
+      checkbox.setAttribute('type', 'checkbox');
+      checkbox.setAttribute('id', `menu-checkbox-${i}`);
+      checkbox.setAttribute('value', toggleActions[i][0]);
+      if (toggleActions[i][2]) checkbox.setAttribute('checked', 'true');
+      checkbox.setAttribute('class', 'lvl-menu-checkbox');
+      checkbox.addEventListener('change', () => toggleActions[i][1](checkbox.checked));
+      this._menuContainerDiv.appendChild(checkbox);
+      const label = document.createElement('label');
+      label.setAttribute('for', `menu-checkbox-${i}`);
+      label.setAttribute('class', 'lvl-menu-checkbox-label');
+      label.innerHTML = toggleActions[i][0];
+      this._menuContainerDiv.appendChild(label);
+    }
+  }
+
+  /**
+   * Whether cyclic animations should be played
+   * @param {boolean} value if set to true, cyclic animations will be played
+   */
+  cyclicAnis(value) {
+    STORAGE.set('noCyclicAni', !value);
+    this._updateAniVars();
+  }
+
+  /**
+   * Whether movement animations should be played
+   * @param {boolean} value if set to true, movement animations will be played
+   */
+  anis(value) {
+    STORAGE.set('noAni', !value);
+    this._updateAniVars();
+  }
+
+  _updateAniVars() {
+    if (this._cGameBoard != null) this._cGameBoard.setAniVars(STORAGE.get('noCyclicAni'), STORAGE.get('noAni'));
   }
 
   /**
@@ -272,7 +319,7 @@ class LevelSelector {
    */
   openLevel(col, idx) {
     this._parentDiv.style.display = 'none';
-    this._cGameBoard = fromLevelDescription(document.body, this._lvlCollections[col].levels[idx]);
+    this._cGameBoard = fromLevelDescription(document.body, this._lvlCollections[col].levels[idx], STORAGE.get('noCyclicAni'), STORAGE.get('noAni'));
     this._cGameBoard.addEventListener('game won', () => this.levelWon());
     this._cGameBoard.addEventListener('open menu', () => this.openMenu());
   }

@@ -169,6 +169,15 @@ class GameBoard {
   }
 
   /**
+   * Set the animation variables
+   * @param {boolean} [noCyclicAni] whether or not to animate grass, clouds etc.
+   * @param {boolean} [noAni] whether or not to animate falling snakes
+   */
+  setAniVars(noCyclicAni = false, noAni = false) {
+    this._drawer.setAniVars(noCyclicAni, noAni);
+  }
+
+  /**
    * Add an event listener to this game board
    * @param {string} type a string specifying the type of event the listener should listen to. Currently,
    * only 'game won' and 'open menu' are supported - 'game won' listeners are evoked when the user finished

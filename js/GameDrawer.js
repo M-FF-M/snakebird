@@ -136,6 +136,18 @@ class GameDrawer {
   }
 
   /**
+   * Set the animation variables
+   * @param {boolean} [noCyclicAni] whether or not to animate grass, clouds etc.
+   * @param {boolean} [noAni] whether or not to animate falling snakes
+   */
+  setAniVars(noCyclicAni = false, noAni = false) {
+    const oldNoCyclicAni = this._noCyclicAni;
+    this._noCyclicAni = noCyclicAni;
+    this._noAni = noAni;
+    if (!this._noCyclicAni && oldNoCyclicAni) this.draw(true);
+  }
+
+  /**
    * Set a new active snake
    * @param {string} newActiveSnake the character corresponding to the new active snake
    */
