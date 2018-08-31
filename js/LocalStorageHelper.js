@@ -9,7 +9,7 @@ const DEFAULT_VARS = [
 ];
 
 /**
- * Check whether to objects are equal
+ * Check whether two objects are equal
  * @param {any} objA the first object
  * @param {any} objB the second object
  * @return {boolean} true, if the objects are equal

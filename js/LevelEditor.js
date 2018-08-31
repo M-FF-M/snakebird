@@ -6,6 +6,12 @@
 const LE_MIN_SIZE = [300, 200];
 
 /**
+ * Delete mode
+ * @type {number}
+ */
+const DELETE = -6;
+
+/**
  * The default game state
  * @type {string}
  */
@@ -125,6 +131,18 @@ class LevelEditor {
     
     this.resize = this.resize.bind(this);
     this.mainMenu = this.mainMenu.bind(this);
+    this.changeBoardSize = this.changeBoardSize.bind(this);
+    this.mouseEnter = this.mouseEnter.bind(this);
+    this.mouseLeave = this.mouseLeave.bind(this);
+    this.mouseDown = this.mouseDown.bind(this);
+    this.mouseUp = this.mouseUp.bind(this);
+    this.mouseClick = this.mouseClick.bind(this);
+    this.obstacleMode = this.obstacleMode.bind(this);
+    this.spikeMode = this.spikeMode.bind(this);
+    this.fruitMode = this.fruitMode.bind(this);
+    this.portalMode = this.portalMode.bind(this);
+    this.targetMode = this.targetMode.bind(this);
+    this.deleteMode = this.deleteMode.bind(this);
 
     this._parentDiv = document.createElement('div');
     this._parentDiv.style.position = 'absolute';
@@ -137,6 +155,8 @@ class LevelEditor {
     this._parentDiv.style.display = 'none';
     this._parentDiv.setAttribute('class', 'lvl-edit-outer-container');
     this._parent.appendChild(this._parentDiv);
+
+    this._addMode = OBSTACLE;
 
     window.addEventListener('resize', this.resize);
     this._cDrawer = null;
@@ -247,6 +267,31 @@ class LevelEditor {
     explDivTmp.innerHTML = 'The level editor cannot be used yet. Its development is still in progress.';
     this._containerDiv.appendChild(explDivTmp);
 
+    const menCont = document.createElement('div');
+    menCont.setAttribute('class', 'lvl-edit-menu-outer');
+    const menCont2 = document.createElement('div');
+    menCont2.setAttribute('class', 'lvl-edit-menu-inner');
+    const simpleActions = [
+      ['Obstacle', () => this.obstacleMode()],
+      ['Spike', () => this.spikeMode()],
+      ['Fruit', () => this.fruitMode()],
+      ['Portal', () => this.portalMode()],
+      ['Target', () => this.targetMode()],
+      ['Delete', () => this.deleteMode()]
+    ];
+    this._simpleActionDivs = [];
+    for (let i=0; i<simpleActions.length; i++) {
+      const dv = document.createElement('div');
+      if (simpleActions[i][0] == 'Obstacle') dv.setAttribute('class', 'lvl-edit-menu-btn selected');
+      else dv.setAttribute('class', 'lvl-edit-menu-btn');
+      dv.innerHTML = simpleActions[i][0];
+      dv.addEventListener('click', simpleActions[i][1]);
+      menCont2.appendChild(dv);
+      this._simpleActionDivs.push(dv);
+    }
+    menCont.appendChild(menCont2);
+    this._containerDiv.appendChild(menCont);
+
     this._pmButtons = [];
     for (let i=0; i<4; i++) { // top, left, right, bottom
       this._pmButtons[i] = [];
@@ -259,10 +304,12 @@ class LevelEditor {
       innerDiv1.innerHTML = '<span>+</span>';
       this._pmButtons[i][1].setAttribute('class', 'inner');
       this._pmButtons[i][1].appendChild(innerDiv1);
+      this._pmButtons[i][1].addEventListener('click', () => this.changeBoardSize(i, 0));
       this._pmButtons[i][2] = document.createElement('div');
       innerDiv2.innerHTML = '<span>-</span>';
       this._pmButtons[i][2].setAttribute('class', 'inner');
       this._pmButtons[i][2].appendChild(innerDiv2);
+      this._pmButtons[i][2].addEventListener('click', () => this.changeBoardSize(i, 1));
       this._pmButtons[i][0].appendChild(this._pmButtons[i][1]);
       this._pmButtons[i][0].appendChild(this._pmButtons[i][2]);
       if (i == 0) this._pmButtons[i][0].setAttribute('class', 'lvl-edit-pm top');
@@ -282,6 +329,271 @@ class LevelEditor {
     this.adaptBoardDiv();
   }
   
+  /**
+   * Set the selected simple button
+   * @param {number} idx the index of the selected button
+   */
+  setSelectedSimpleButton(idx) {
+    for (let i=0; i<this._simpleActionDivs.length; i++) {
+      if (i == idx) this._simpleActionDivs[i].setAttribute('class', 'lvl-edit-menu-btn selected');
+      else this._simpleActionDivs[i].setAttribute('class', 'lvl-edit-menu-btn');
+    }
+  }
+
+  /**
+   * Change the board size
+   * @param {number} side 0: top, 1: left, 2: right, 3: bottom
+   * @param {number} dir 0: add, 1: subtract
+   */
+  changeBoardSize(side, dir) {
+    let shift = [0, 0];
+    if (dir == 1) {
+      if ((side == 0 || side == 3) && this._bHeight <= 1) return;
+      if ((side == 1 || side == 2) && this._bWidth <= 1) return;
+      if (side == 0) { // top
+        this._lines.shift();
+        for (let i=0; i<this._bWidth; i++)
+          this._field[i].shift();
+        this._bHeight--;
+        shift = [0, -1];
+      } else if (side == 1) { // left
+        this._field.shift();
+        for (let i=0; i<this._bHeight; i++)
+          this._lines[i] = this._lines[i].substring(1, this._bWidth);
+        this._bWidth--;
+        shift = [-1, 0];
+      } else if (side == 2) { // right
+        this._field.pop();
+        for (let i=0; i<this._bHeight; i++)
+          this._lines[i] = this._lines[i].substring(0, this._bWidth - 1);
+        this._bWidth--;
+      } else { // bottom
+        this._lines.pop();
+        for (let i=0; i<this._bWidth; i++)
+          this._field[i].pop();
+        this._bHeight--;
+      }
+    } else {
+      if (side == 0) { // top
+        let newLine = '';
+        for (let i=this._bHeight; i>=1; i--) {
+          for (let k=0; k<this._bWidth; k++) {
+            if (i == 1) newLine += '.';
+            this._field[k][i] = this._field[k][i-1];
+          }
+        }
+        this._bHeight++;
+        this._lines.splice(0, 0, newLine);
+        shift = [0, 1];
+      } else if (side == 1) { // left
+        this._field[this._bWidth] = [];
+        for (let i=this._bWidth; i>=1; i--) {
+          for (let k=0; k<this._bHeight; k++)
+            this._field[i][k] = this._field[i-1][k];
+        }
+        for (let i=0; i<this._bHeight; i++) {
+          this._field[0][i] = EMPTY;
+          this._lines[i] = '.' + this._lines[i];
+        }
+        this._bWidth++;
+        shift = [1, 0];
+      } else if (side == 2) { // right
+        this._field[this._bWidth] = [];
+        for (let i=0; i<this._bHeight; i++) {
+          this._field[this._bWidth][i] = EMPTY;
+          this._lines[i] = this._lines[i] + '.';
+        }
+        this._bWidth++;
+      } else { // bottom
+        let newLine = '';
+        for (let i=0; i<this._bWidth; i++) {
+          this._field[i][this._bHeight] = EMPTY;
+          newLine += '.';
+        }
+        this._bHeight++;
+        this._lines.push(newLine);
+      }
+    }
+
+    if (this._target[0] >= 0) {
+      this._target[0] += shift[0];
+      this._target[1] += shift[1];
+    }
+    for (let i=0; i<this._portalPos.length; i++) {
+      if (this._portalPos[i][0] >= 0) {
+        this._portalPos[i][0] += shift[0];
+        this._portalPos[i][1] += shift[1];
+      }
+    }
+    for (let i=0; i<this._fruits; i++) {
+      this._fruitPos[i][0] += shift[0];
+      this._fruitPos[i][1] += shift[1];
+    }
+
+    if (this._target[0] >= this._bWidth || this._target[1] >= this._bHeight
+        || this._target[0] < 0 || this._target[1] < 0) this._target = [-1, -1];
+    for (let i=this._portalPos.length-1; i>=0; i--)
+      if (this._portalPos[i][0] >= this._bWidth || this._portalPos[i][1] >= this._bHeight
+         || this._portalPos[i][0] < 0 || this._portalPos[i][1] < 0) this._portalPos.splice(i, 1);
+    if (this._portalPos.length == 1) this._portalPos.push([-1, -1]);
+    for (let i=this._fruitPos.length-1; i>=0; i--)
+      if (this._fruitPos[i][0] >= this._bWidth || this._fruitPos[i][1] >= this._bHeight
+         || this._fruitPos[i][0] < 0 || this._fruitPos[i][1] < 0) this._fruitPos.splice(i, 1);
+    this._fruits = this._fruitPos.length;
+
+    this.adaptBoardDiv();
+  }
+
+  /**
+   * Should be called when the mouse enters a cell
+   * @param {number} x the x coordinate of the cell
+   * @param {number} y the y coordinate of the cell
+   */
+  mouseEnter(x, y) {
+
+  }
+  
+  /**
+   * Should be called when the mouse leaves a cell
+   * @param {number} x the x coordinate of the cell
+   * @param {number} y the y coordinate of the cell
+   */
+  mouseLeave(x, y) {
+
+  }
+  
+  /**
+   * Should be called when the mouse is pressed down in a cell
+   * @param {number} x the x coordinate of the cell
+   * @param {number} y the y coordinate of the cell
+   */
+  mouseDown(x, y) {
+
+  }
+  
+  /**
+   * Should be called when the mouse is released in a cell
+   * @param {number} x the x coordinate of the cell
+   * @param {number} y the y coordinate of the cell
+   */
+  mouseUp(x, y) {
+
+  }
+  
+  /**
+   * Should be called when the user clicks on a cell
+   * @param {number} x the x coordinate of the cell
+   * @param {number} y the y coordinate of the cell
+   * @param {boolean} [rightClick] if set to true: indicates that the right mouse button was used
+   */
+  mouseClick(x, y, rightClick = false) {
+    let redraw = false;
+
+    if (rightClick || this._addMode == DELETE) { // delete
+      if (this._field[x][y] != EMPTY) {
+        if (this._target[0] == x && this._target[1] == y) {
+          this._target = [-1, -1];
+          if (this._field[x][y] == TARGET) {
+            this._field[x][y] = EMPTY;
+            this.setStrVal(x, y, '.');
+          }
+          redraw = true;
+        }
+        for (let i=0; i<this._portalPos.length; i++) {
+          if (this._portalPos[i][0] == x && this._portalPos[i][1] == y) {
+            this._portalPos.splice(i, 1);
+            if (this._field[x][y] == PORTAL) {
+              this._field[x][y] = EMPTY;
+              this.setStrVal(x, y, '.');
+            }
+            redraw = true;
+            break;
+          }
+        }
+        for (let i=0; i<this._fruitPos.length; i++) {
+          if (this._fruitPos[i][0] == x && this._fruitPos[i][1] == y) {
+            this._fruitPos.splice(i, 1);
+            if (this._field[x][y] == FRUIT) {
+              this._field[x][y] = EMPTY;
+              this.setStrVal(x, y, '.');
+            }
+            redraw = true;
+            break;
+          }
+        }
+        this._fruits = this._fruitPos.length;
+        if (this._field[x][y] == OBSTACLE || this._field[x][y] == SPIKE) {
+          this._field[x][y] = EMPTY;
+          this.setStrVal(x, y, '.');
+          redraw = true;
+        }
+      }
+
+    } else { // add
+      if (this._field[x][y] == EMPTY) {
+        if (this._addMode == OBSTACLE) {
+          this._field[x][y] = OBSTACLE;
+          this.setStrVal(x, y, '#');
+          redraw = true;
+        } else if (this._addMode == SPIKE) {
+          this._field[x][y] = SPIKE;
+          this.setStrVal(x, y, '|');
+          redraw = true;
+        } else if (this._addMode == FRUIT) {
+          this._field[x][y] = FRUIT;
+          this.setStrVal(x, y, '@');
+          this._fruits++;
+          this._fruitPos.push([x, y]);
+          redraw = true;
+        } else if (this._addMode == PORTAL) {
+          this._field[x][y] = PORTAL;
+          this.setStrVal(x, y, '*');
+          if (this._portalPos.length == 0) {
+            this._portalPos.push([x, y]);
+            this._portalPos.push([-1, -1]);
+          } else if (this._portalPos.length == 1) {
+            this._portalPos.push([x, y]);
+          } else if (this._portalPos.length == 2) {
+            const [ox, oy] = this._portalPos[1];
+            if (ox >= 0 && oy >= 0 && this._field[ox][oy] == PORTAL) {
+              this._field[ox][oy] = EMPTY;
+              this.setStrVal(ox, oy, '.');
+            }
+            this._portalPos[1] = [x, y];
+          }
+          redraw = true;
+        } else if (this._addMode == TARGET) {
+          const [ox, oy] = this._target;
+          if (ox >= 0 && oy >= 0 && this._field[ox][oy] == TARGET) {
+            this._field[ox][oy] = EMPTY;
+            this.setStrVal(ox, oy, '.');
+          }
+          this._field[x][y] = TARGET;
+          this.setStrVal(x, y, 'X');
+          this._target = [x, y];
+          redraw = true;
+        }
+      }
+    }
+    for (let i=this._portalPos.length-1; i>=0; i--)
+      if (this._portalPos[i][0] >= this._bWidth || this._portalPos[i][1] >= this._bHeight
+         || this._portalPos[i][0] < 0 || this._portalPos[i][1] < 0) this._portalPos.splice(i, 1);
+    if (this._portalPos.length == 1) this._portalPos.push([-1, -1]);
+    if (redraw)
+      this.adaptBoardDiv();
+  }
+  
+  /**
+   * Set the character value of a cell in the field
+   * @param {number} x the x coordinate (from the top left corner)
+   * @param {number} y the y coordinate (from the top left corner)
+   * @param {string} val the new character value
+   */
+  setStrVal(x, y, val) {
+    if (x < 0 || y < 0 || x >= this._bWidth || y >= this._bHeight) return;
+    this._lines[y] = `${this._lines[y].substring(0, x)}${val}${this._lines[y].substring(x + 1, this._lines[y].length)}`;
+  }
+
   /**
    * Adapt the board div to the current game state
    */
@@ -328,6 +640,12 @@ class LevelEditor {
         this._boardSquares[i][k].style.height = `${SQUARE_SZ}px`;
         this._boardSquares[i][k].style.minHeight = `${SQUARE_SZ}px`;
         this._boardSquares[i][k].style.maxHeight = `${SQUARE_SZ}px`;
+        this._boardSquares[i][k].addEventListener('mouseenter', () => this.mouseEnter(i, k));
+        this._boardSquares[i][k].addEventListener('mouseleave', () => this.mouseLeave(i, k));
+        this._boardSquares[i][k].addEventListener('mousedown', () => this.mouseDown(i, k));
+        this._boardSquares[i][k].addEventListener('mouseup', () => this.mouseUp(i, k));
+        this._boardSquares[i][k].addEventListener('click', evt => { if (evt.button != 2) this.mouseClick(i, k); });
+        this._boardSquares[i][k].addEventListener('contextmenu', evt => { evt.preventDefault(); this.mouseClick(i, k, true); });
         this._boardRows[k].appendChild(this._boardSquares[i][k]);
       }
       this._boardSquareContainer.appendChild(this._boardRows[k]);
@@ -370,6 +688,54 @@ class LevelEditor {
     this._parentDiv.style.height = `${this._height}px`;
     this._parentDiv.style.minHeight = `${this._height}px`;
     this._parentDiv.style.maxHeight = `${this._height}px`;
+  }
+
+  /**
+   * Set the add mode to obstacle
+   */
+  obstacleMode() {
+    this._addMode = OBSTACLE;
+    this.setSelectedSimpleButton(0);
+  }
+
+  /**
+   * Set the add mode to obstacle
+   */
+  spikeMode() {
+    this._addMode = SPIKE;
+    this.setSelectedSimpleButton(1);
+  }
+
+  /**
+   * Set the add mode to obstacle
+   */
+  fruitMode() {
+    this._addMode = FRUIT;
+    this.setSelectedSimpleButton(2);
+  }
+
+  /**
+   * Set the add mode to obstacle
+   */
+  portalMode() {
+    this._addMode = PORTAL;
+    this.setSelectedSimpleButton(3);
+  }
+
+  /**
+   * Set the add mode to obstacle
+   */
+  targetMode() {
+    this._addMode = TARGET;
+    this.setSelectedSimpleButton(4);
+  }
+
+  /**
+   * Set the add mode to delete
+   */
+  deleteMode() {
+    this._addMode = DELETE;
+    this.setSelectedSimpleButton(5);
   }
 
   /**

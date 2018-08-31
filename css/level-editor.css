@@ -76,6 +76,7 @@
   -moz-user-select: none;
   user-select: none;
   border-radius: 0.5em;
+  background-color: rgba(78, 168, 188, 0);
 }
 
 .lvl-edit-pm div.inner:hover {
@@ -116,4 +117,39 @@
   width: 50%;
   padding-top: 0.5em;
   padding-bottom: 0.5em;
+}
+
+.lvl-edit-menu-outer {
+  display: inline-block;
+  border-radius: 0.5em;
+  box-shadow: 0em 0.2em 0em 0em rgba(55, 117, 161, 1);
+  background-color: rgba(78, 141, 188, 1);
+  color: rgb(255, 255, 255, 1);
+  text-shadow: 0em 0.1em 0em rgba(55, 117, 161, 1);
+  margin-bottom: 2em;
+}
+
+.lvl-edit-menu-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lvl-edit-menu-btn {
+  border-radius: 0.5em;
+  -moz-user-select: none;
+  user-select: none;
+  background-color: rgba(78, 168, 188, 0);
+  padding-left: 2em;
+  padding-right: 2em;
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
+}
+
+.lvl-edit-menu-btn.selected {
+  text-shadow: 0em 0.1em 0em rgba(114, 35, 61, 1);
+}
+
+.lvl-edit-menu-btn:hover {
+  background-color: rgba(78, 168, 188, 1);
 }

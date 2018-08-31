@@ -53,7 +53,7 @@ function drawPortalBack(con, bx, by, bSize, globalTime, scale = 1) {
  * @param {number} globalSlowTime a number between 0 and 1 that is used for cyclic animations
  */
 function drawPortalFront(con, bx, by, bSize, globalSlowTime) {
-  globalSlowTime = (globalSlowTime * 2) % 1;
+  globalSlowTime = (globalSlowTime * 2 + 0.29) % 1;
   const glPos = [];
   const glSize = [];
   if (globalSlowTime < 0.4) {
