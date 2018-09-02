@@ -591,6 +591,10 @@ class LevelEditor {
         this._notFinishedDescr = 'Only one of two portals has been added.';
       }
     }
+    if (!this._isNotFinished && this._snakes.length == 0) {
+      this._isNotFinished = true;
+      this._notFinishedDescr = 'There are no snakebirds yet.';
+    }
     if (!this._isNotFinished) {
       const cState = this._getGameState();
       const res = gameTransition(cState, null, DOWN, this._fallThrough, DOWN, true, this._changeGravity, this._options);
