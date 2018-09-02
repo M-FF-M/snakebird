@@ -46,6 +46,8 @@ class LevelSelector {
     this.cyclicAnis = this.cyclicAnis.bind(this);
     this.anis = this.anis.bind(this);
     this.openEditor = this.openEditor.bind(this);
+    this.openInitialEditor = this.openInitialEditor.bind(this);
+    this.openCurrentEditor = this.openCurrentEditor.bind(this);
     this._parent = parentElem;
     this._lvlCollections = levelCollections;
     this._isShutDown = false;
@@ -73,6 +75,7 @@ class LevelSelector {
     this._menuParentDiv.setAttribute('class', 'lvl-menu-outer-container');
     this._parent.appendChild(this._menuParentDiv);
 
+    this._returnToLevelEditor = false;
     window.addEventListener('resize', this.resize);
     this._cGameBoard = null;
     this._lvlEditor = null;
@@ -261,7 +264,9 @@ class LevelSelector {
     this._menuContainerDiv.appendChild(menuH1);
     const menuActions = [
       ['Continue', () => this.closeMenu()],
-      ['Quit', () => this.returnToMainMenu()]
+      ['Quit', () => this.returnToMainMenu()],
+      ['Open level in level editor', () => this.openInitialEditor()],
+      ['Open state in level editor ', () => this.openCurrentEditor()]
     ];
     for (let i=0; i<menuActions.length; i++) {
       const button = document.createElement('input');
@@ -297,9 +302,42 @@ class LevelSelector {
   }
 
   /**
+   * Opens the level editor with the current level
+   */
+  openInitialEditor() {
+    if (this._isShutDown) return;
+    if (this._lastInitialState) {
+      this._returnToLevelEditor = false;
+      this.returnToMainMenu();
+      this._parentDiv.style.display = 'none';
+      if (this._lvlEditor != null) this._lvlEditor.shutDown();
+      this._lvlEditor = new LevelEditor(document.body, this, this._lastInitialState, this._lastFallThrough,
+        this._lastChangeGravity, this._lastOptions);
+      this._lvlEditor.show();
+    }
+  }
+
+  /**
+   * Opens the level editor with the current game state
+   */
+  openCurrentEditor() {
+    if (this._isShutDown) return;
+    if (this._lastCurrentState) {
+      this._returnToLevelEditor = false;
+      this.returnToMainMenu();
+      this._parentDiv.style.display = 'none';
+      if (this._lvlEditor != null) this._lvlEditor.shutDown();
+      this._lvlEditor = new LevelEditor(document.body, this, this._lastCurrentState, this._lastFallThrough,
+        this._lastChangeGravity, this._lastOptions);
+      this._lvlEditor.show();
+    }
+  }
+
+  /**
    * Opens the level editor
    */
   openEditor() {
+    if (this._isShutDown) return;
     this._parentDiv.style.display = 'none';
     if (this._lvlEditor === null) this._lvlEditor = new LevelEditor(document.body, this);
     this._lvlEditor.show();
@@ -309,8 +347,10 @@ class LevelSelector {
    * Closes the level editor
    */
   closeEditor() {
+    if (this._isShutDown) return;
     this._parentDiv.style.display = 'block';
     this._lvlEditor.hide();
+    this._returnToLevelEditor = false;
   }
 
   /**
@@ -356,15 +396,58 @@ class LevelSelector {
     this._parentDiv.style.display = 'none';
     this._cGameBoard = fromLevelDescription(document.body, this._lvlCollections[col].levels[idx], STORAGE.get('noCyclicAni'), STORAGE.get('noAni'));
     this._cGameBoard.addEventListener('game won', () => this.levelWon());
-    this._cGameBoard.addEventListener('open menu', () => this.openMenu());
+    this._cGameBoard.addEventListener('open menu',
+      (initialState, currentState, fallThrough, changeGravity, options) =>
+        this.openMenu(initialState, currentState, fallThrough, changeGravity, options));
+    this._returnToLevelEditor = false;
+  }
+
+  /**
+   * Open a level by passing all required arguments
+   * @param {GameState} state the initial state
+   * @param {boolean} fallThrough whether the objects that fall out of the board appear again
+   * on the other side of the board
+   * @param {boolean} changeGravity whether to change the direction of gravity in clockwise order
+   * when the snake eats a fruit
+   * @param {object} options additional options to be taken into account when calculating the next state
+   * @param {boolean} options.allowMovingWithoutSpace if set to true, a snake can move without space
+   * if the object blocking its path is moved at the same time
+   * @param {boolean} options.allowTailBiting if allowMovingWithoutSpace is set to true, but this
+   * parameter is set to false, a snake can move without space if it is not blocking itself
+   */
+  openRawLevel(state, fallThrough, changeGravity, options) {
+    if (this._isShutDown) return;
+    this._parentDiv.style.display = 'none';
+    this._cGameBoard = new GameBoard(document.body, state, fallThrough, changeGravity, options, STORAGE.get('noCyclicAni'), STORAGE.get('noAni'));
+    this._cGameBoard.addEventListener('game won', () => this.levelWon());
+    this._cGameBoard.addEventListener('open menu',
+      (initialState, currentState, fallThrough, changeGravity, options) =>
+        this.openMenu(initialState, currentState, fallThrough, changeGravity, options));
+    this._returnToLevelEditor = true;
   }
 
   /**
    * Open the level pause menu
+   * @param {string} initialState the initial level state
+   * @param {string} currentState the current game state
+   * @param {boolean} fallThrough whether the objects that fall out of the board appear again
+   * on the other side of the board
+   * @param {boolean} changeGravity whether to change the direction of gravity in clockwise order
+   * when the snake eats a fruit
+   * @param {object} options additional options to be taken into account when calculating the next state
+   * @param {boolean} options.allowMovingWithoutSpace if set to true, a snake can move without space
+   * if the object blocking its path is moved at the same time
+   * @param {boolean} options.allowTailBiting if allowMovingWithoutSpace is set to true, but this
+   * parameter is set to false, a snake can move without space if it is not blocking itself
    */
-  openMenu() {
+  openMenu(initialState, currentState, fallThrough, changeGravity, options) {
     if (this._isShutDown) return;
     this._menuParentDiv.style.display = 'block';
+    this._lastInitialState = initialState;
+    this._lastCurrentState = currentState;
+    this._lastFallThrough = fallThrough;
+    this._lastChangeGravity = changeGravity;
+    this._lastOptions = options;
   }
 
   /**
@@ -403,6 +486,10 @@ class LevelSelector {
     this._cGameBoard.shutDown();
     this._parentDiv.style.display = 'block';
     this._cGameBoard = null;
+    if (this._returnToLevelEditor) {
+      this.openEditor();
+      this._returnToLevelEditor = false;
+    }
   }
 
   /**

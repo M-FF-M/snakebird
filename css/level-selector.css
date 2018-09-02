@@ -70,6 +70,10 @@ div.bordered-text, .lvl-menu-checkbox-label {
   color: rgba(255, 255, 255, 1);
 }
 
+.lvl-menu-checkbox-label.top-margin {
+  margin-top: 1em;
+}
+
 .lvl-menu-checkbox {
   display: none;
 }

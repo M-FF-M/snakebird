@@ -50,12 +50,80 @@ class LevelEditor {
    */
   constructor(parentElem, levelSel, gameState = DEFAULT_GAME_STATE, fallThrough = false, changeGravity = false, options = {}) {
     this._parent = parentElem;
+    this._isShutDown = false;
+    this._levelSel = levelSel;
+
+    this._loadLevel(gameState, fallThrough, changeGravity, options);
+    this._smallMountains = 7;
+    this._mediumMountains = 5;
+    this._largeMountains = 4;
+    this._mountainArr = generateMountainArr(this._smallMountains, this._mediumMountains, this._largeMountains);
+    const [clouds, cloudPositions] = generateCloudArr();
+    this._clouds = clouds;
+    this._cloudPositions = cloudPositions;
+    
+    this.resize = this.resize.bind(this);
+    this.mainMenu = this.mainMenu.bind(this);
+    this.changeBoardSize = this.changeBoardSize.bind(this);
+    this.mouseEnter = this.mouseEnter.bind(this);
+    this.mouseLeave = this.mouseLeave.bind(this);
+    this.mouseFinalLeave = this.mouseFinalLeave.bind(this);
+    this.mouseDown = this.mouseDown.bind(this);
+    this.mouseUp = this.mouseUp.bind(this);
+    this.mouseClick = this.mouseClick.bind(this);
+    this.snakeMode = this.snakeMode.bind(this);
+    this.blockMode = this.blockMode.bind(this);
+    this.obstacleMode = this.obstacleMode.bind(this);
+    this.spikeMode = this.spikeMode.bind(this);
+    this.fruitMode = this.fruitMode.bind(this);
+    this.portalMode = this.portalMode.bind(this);
+    this.targetMode = this.targetMode.bind(this);
+    this.deleteMode = this.deleteMode.bind(this);
+    this.snakeColorSelect = this.snakeColorSelect.bind(this);
+    this.blockColorSelect = this.blockColorSelect.bind(this);
+    this.press = this.press.bind(this);
+    this.undo = this.undo.bind(this);
+    this.redo = this.redo.bind(this);
+    this.saveLevel = this.saveLevel.bind(this);
+    this.playLevel = this.playLevel.bind(this);
+    this.openLevel = this.openLevel.bind(this);
+
+    this._parentDiv = document.createElement('div');
+    this._parentDiv.style.position = 'absolute';
+    this._parentDiv.style.left = '0px';
+    this._parentDiv.style.top = '0px';
+    this._parentDiv.style.zIndex = '15';
+    this._parentDiv.style.backgroundColor = 'rgba(255, 255, 255, 1)';
+    this._parentDiv.style.overflow = 'auto';
+    this._parentDiv.style.fontFamily = '\'Fredoka One\'';
+    this._parentDiv.style.display = 'none';
+    this._parentDiv.setAttribute('class', 'lvl-edit-outer-container');
+    this._parent.appendChild(this._parentDiv);
+
+    this._addMode = OBSTACLE;
+    this._selectedSnake = 'R';
+    this._selectedBlock = 'a';
+    this._snakeDragMode = false;
+
+    window.addEventListener('resize', this.resize);
+    this._cDrawer = null;
+    this.resize();
+    window.addEventListener('keyup', this.press);
+    this.rebuildHTML();
+  }
+  
+  _loadLevel(gameState = DEFAULT_GAME_STATE, fallThrough = false, changeGravity = false, options = {}, resetLvlStack = true) {
+    if (this._isShutDown) return;
     this._fallThrough = fallThrough;
     this._changeGravity = changeGravity;
     const { allowMovingWithoutSpace = false, allowTailBiting = false } = options;
     this._options = { allowMovingWithoutSpace, allowTailBiting };
-    this._isShutDown = false;
-    this._levelSel = levelSel;
+    if (this._checkboxes && this._checkboxes.length == 4) {
+      this._checkboxes[0].checked = this._fallThrough;
+      this._checkboxes[1].checked = this._changeGravity;
+      this._checkboxes[2].checked = this._options.allowMovingWithoutSpace;
+      this._checkboxes[3].checked = this._options.allowTailBiting;
+    }
 
     this._target = [-1, -1]; this._portalPos = [];
     this._lines = gameState.split(/\r?\n/g);
@@ -146,69 +214,29 @@ class LevelEditor {
     for (let i=this._portalPos.length-1; i>=0; i--)
       if (this._portalPos[i][0] >= this._bWidth || this._portalPos[i][1] >= this._bHeight) this._portalPos.splice(i, 1);
     if (this._portalPos.length == 1) this._portalPos.push([-1, -1]);
-
-    this._smallMountains = 7;
-    this._mediumMountains = 5;
-    this._largeMountains = 4;
-    this._mountainArr = generateMountainArr(this._smallMountains, this._mediumMountains, this._largeMountains);
-    const [clouds, cloudPositions] = generateCloudArr();
-    this._clouds = clouds;
-    this._cloudPositions = cloudPositions;
     
-    this.resize = this.resize.bind(this);
-    this.mainMenu = this.mainMenu.bind(this);
-    this.changeBoardSize = this.changeBoardSize.bind(this);
-    this.mouseEnter = this.mouseEnter.bind(this);
-    this.mouseLeave = this.mouseLeave.bind(this);
-    this.mouseFinalLeave = this.mouseFinalLeave.bind(this);
-    this.mouseDown = this.mouseDown.bind(this);
-    this.mouseUp = this.mouseUp.bind(this);
-    this.mouseClick = this.mouseClick.bind(this);
-    this.snakeMode = this.snakeMode.bind(this);
-    this.blockMode = this.blockMode.bind(this);
-    this.obstacleMode = this.obstacleMode.bind(this);
-    this.spikeMode = this.spikeMode.bind(this);
-    this.fruitMode = this.fruitMode.bind(this);
-    this.portalMode = this.portalMode.bind(this);
-    this.targetMode = this.targetMode.bind(this);
-    this.deleteMode = this.deleteMode.bind(this);
-    this.snakeColorSelect = this.snakeColorSelect.bind(this);
-    this.blockColorSelect = this.blockColorSelect.bind(this);
-
-    this._parentDiv = document.createElement('div');
-    this._parentDiv.style.position = 'absolute';
-    this._parentDiv.style.left = '0px';
-    this._parentDiv.style.top = '0px';
-    this._parentDiv.style.zIndex = '15';
-    this._parentDiv.style.backgroundColor = 'rgba(255, 255, 255, 1)';
-    this._parentDiv.style.overflow = 'auto';
-    this._parentDiv.style.fontFamily = '\'Fredoka One\'';
-    this._parentDiv.style.display = 'none';
-    this._parentDiv.setAttribute('class', 'lvl-edit-outer-container');
-    this._parent.appendChild(this._parentDiv);
-
-    this._addMode = OBSTACLE;
-    this._selectedSnake = 'R';
-    this._selectedBlock = 'a';
-    this._snakeDragMode = false;
-
-    window.addEventListener('resize', this.resize);
-    this._cDrawer = null;
-    this.resize();
-    this.rebuildHTML();
+    if (resetLvlStack) {
+      this._lvlStack = [this._getStateString(true)];
+      this._cLvl = 0;
+    }
   }
-  
-  _getGameState() {
-    if (this._isShutDown) return new GameState('2 2\n>R\n#X');
-    return new GameState(`${this._height} ${this._width}\n${this._lines.join('\n')}\n${
-      this._target[0] == -1 ? '0 0' : `${this._target[0]} ${this._target[1]}`
+
+  _getStateString(overflow = false) {
+    if (this._isShutDown) return '2 2\n>R\n#X';
+    return `${this._bHeight} ${this._bWidth}\n${this._lines.join('\n')}\n${
+      this._target[0] == -1 ? (overflow ? `${this._bWidth} ${this._bHeight}` : '0 0') : `${this._target[0]} ${this._target[1]}`
     } not over${
       this._portalPos.length == 0 ? '' : (
         ` ${this._portalPos[0][0]} ${this._portalPos[0][1]} ${
-          this._portalPos[1][0] == -1 ? '0 0' : `${this._portalPos[1][0]} ${this._portalPos[1][1]}`
+          this._portalPos[1][0] == -1 ? (overflow ? `${this._bWidth} ${this._bHeight}` : '0 0') : `${this._portalPos[1][0]} ${this._portalPos[1][1]}`
         }`
       )
-    }`);
+    }`;
+  }
+
+  _getGameState() {
+    if (this._isShutDown) return new GameState('2 2\n>R\n#X');
+    return new GameState(this._getStateString());
   }
 
   _getDontDraws() {
@@ -241,6 +269,7 @@ class LevelEditor {
    * Return to the main menu
    */
   mainMenu() {
+    if (this._isShutDown) return;
     this._levelSel.closeEditor();
   }
 
@@ -298,8 +327,53 @@ class LevelEditor {
 
     const explDivTmp = document.createElement('div');
     explDivTmp.setAttribute('class', 'bordered-text');
-    explDivTmp.innerHTML = 'Levels cannot be saved or played yet. The development is still in progress.';
+    explDivTmp.innerHTML = 'Levels cannot be saved yet. The development is still in progress.';
+    // explDivTmp.innerHTML = 'Caution: unsaved levels will be lost irrevocably. No warnings will be displayed!';
     this._containerDiv.appendChild(explDivTmp);
+
+    const instrTextDiv = document.createElement('div');
+    instrTextDiv.setAttribute('class', 'bordered-text');
+    instrTextDiv.innerHTML = 'Use the menu below to select what you want to add to the level. If you select snake or block, another '
+      + 'menu will pop up, enabling you to choose the color of the snakebird / block. Drag the mouse to add snakebirds, click to add '
+      + 'the other stuff.';
+    this._containerDiv.appendChild(instrTextDiv);
+
+    const instrTextDiv2 = document.createElement('div');
+    instrTextDiv2.setAttribute('class', 'bordered-text');
+    instrTextDiv2.innerHTML = 'Note that snakebirds and portals or targets may not be layered on top of each other, even though such a '
+      + 'state could be a valid game state (however, all the available levels do not start in a state where a snakebird is on top of a '
+      + 'portal or target).';
+    this._containerDiv.appendChild(instrTextDiv2);
+
+    const instrTextDiv3 = document.createElement('div');
+    instrTextDiv3.setAttribute('class', 'bordered-text');
+    instrTextDiv3.innerHTML = 'To delete objects from the board, either select delete from the menu or right click on the object you '
+      + 'would like to remove.';
+    this._containerDiv.appendChild(instrTextDiv3);
+
+    const editorActions = [
+      ['undo.svg', 'Undo', () => this.undo()],
+      ['redo.svg', 'Redo', () => this.redo()],
+      ['save.svg', 'Save', () => this.saveLevel()],
+      ['play.svg', 'Play', () => this.playLevel()],
+      ['open.svg', 'Open', () => this.openLevel()]
+    ];
+    const editCont = document.createElement('div');
+    editCont.setAttribute('class', 'lvl-edit-menu-outer');
+    const editCont2 = document.createElement('div');
+    editCont2.setAttribute('class', 'lvl-edit-menu-inner');
+    for (let i=0; i<editorActions.length; i++) {
+      const dv = document.createElement('div');
+      dv.setAttribute('class', 'lvl-edit-menu-btn');
+      dv.innerHTML = `<img src="css/${editorActions[i][0]}" />${editorActions[i][1]}`;
+      dv.addEventListener('click', editorActions[i][2]);
+      editCont2.appendChild(dv);
+      if (editorActions[i][1] == 'Undo') this._undoButton = dv;
+      if (editorActions[i][1] == 'Redo') this._redoButton = dv;
+    }
+    editCont.appendChild(editCont2);
+    this._containerDiv.appendChild(editCont);
+    this._containerDiv.appendChild(document.createElement('br'));
 
     const menCont = document.createElement('div');
     menCont.setAttribute('class', 'lvl-edit-menu-outer');
@@ -327,6 +401,7 @@ class LevelEditor {
     }
     menCont.appendChild(menCont2);
     this._containerDiv.appendChild(menCont);
+    this._containerDiv.appendChild(document.createElement('br'));
 
     this._snakeColorCont = document.createElement('div');
     this._snakeColorCont.setAttribute('class', 'lvl-edit-color-outer');
@@ -406,14 +481,143 @@ class LevelEditor {
     this._containerDiv.appendChild(this._pmButtons[2][0]);
     this._containerDiv.appendChild(this._pmButtons[3][0]);
 
+    const toggleActions = [
+      ['Wrap-Around (snakebirds appear again on the other side)', val => this._fallThrough = val, this._fallThrough],
+      ['Change gravity (when a fruit is eaten)', val => this._changeGravity = val, this._changeGravity],
+      ['Allow moving without space', val => this._options.allowMovingWithoutSpace = val, this._options.allowMovingWithoutSpace],
+      ['Allow tail biting', val => this._options.allowTailBiting = val, this._options.allowTailBiting]
+    ];
+    this._checkboxes = [];
+    for (let i=0; i<toggleActions.length; i++) {
+      const checkbox = document.createElement('input');
+      checkbox.setAttribute('type', 'checkbox');
+      checkbox.setAttribute('id', `lvl-edit-checkbox-${i}`);
+      checkbox.setAttribute('value', toggleActions[i][0]);
+      if (toggleActions[i][2]) checkbox.setAttribute('checked', 'true');
+      checkbox.setAttribute('class', 'lvl-menu-checkbox');
+      checkbox.addEventListener('change', () => toggleActions[i][1](checkbox.checked));
+      this._containerDiv.appendChild(checkbox);
+      const label = document.createElement('label');
+      label.setAttribute('for', `lvl-edit-checkbox-${i}`);
+      if (i == 0) label.setAttribute('class', 'lvl-menu-checkbox-label top-margin');
+      else label.setAttribute('class', 'lvl-menu-checkbox-label');
+      label.innerHTML = toggleActions[i][0];
+      this._containerDiv.appendChild(label);
+      this._checkboxes.push(checkbox);
+    }
+
     this.adaptBoardDiv();
+    this._updateUndoRedoButtons();
   }
   
+  /**
+   * This method should be called when a key was pressed
+   * @param {object} event the event object
+   */
+  press(event) {
+    if (this._isShutDown) return;
+    const key = event.key.toLowerCase();
+    if (key === 'z' && (event.ctrlKey || event.shiftKey)) {
+      event.preventDefault();
+      this.undo();
+    } else if (key === 'y' && (event.ctrlKey || event.shiftKey)) {
+      event.preventDefault();
+      this.redo();
+    } else if (key === 's' && (event.ctrlKey || event.shiftKey)) {
+      event.preventDefault();
+      this.saveLevel();
+    } else if (key === 'o' && (event.ctrlKey || event.shiftKey)) {
+      event.preventDefault();
+      this.openLevel();
+    } else if (key === 'p' && (event.ctrlKey || event.shiftKey)) {
+      event.preventDefault();
+      this.playLevel();
+    }
+  }
+
+  _updateUndoRedoButtons() {
+    if (this._isShutDown) return;
+    if (!this._undoButton) return;
+    const [u, r] = [this._cLvl > 0, this._cLvl < this._lvlStack.length - 1];
+    if (u) this._undoButton.setAttribute('class', 'lvl-edit-menu-btn');
+    else this._undoButton.setAttribute('class', 'lvl-edit-menu-btn disabled');
+    if (r) this._redoButton.setAttribute('class', 'lvl-edit-menu-btn');
+    else this._redoButton.setAttribute('class', 'lvl-edit-menu-btn disabled');
+  }
+
+  /**
+   * Undo the last change
+   */
+  undo() {
+    if (this._isShutDown) return;
+    if (this._cLvl > 0) {
+      this._cLvl--;
+      this._loadLevel(this._lvlStack[this._cLvl], this._fallThrough, this._changeGravity, this._options, false);
+      this.adaptBoardDiv();
+    }
+    this._updateUndoRedoButtons();
+  }
+
+  /**
+   * Redo the last undone change
+   */
+  redo() {
+    if (this._isShutDown) return;
+    if (this._cLvl < this._lvlStack.length - 1) {
+      this._cLvl++;
+      this._loadLevel(this._lvlStack[this._cLvl], this._fallThrough, this._changeGravity, this._options, false);
+      this.adaptBoardDiv();
+    }
+    this._updateUndoRedoButtons();
+  }
+
+  /**
+   * Save the level
+   */
+  saveLevel() {
+    if (this._isShutDown) return;
+    window.alert('Saving is not possible yet!');
+  }
+
+  /**
+   * Play the level
+   */
+  playLevel() {
+    if (this._isShutDown) return;
+    this.mainMenu();
+    this._levelSel.openRawLevel(this._getGameState(), this._fallThrough, this._changeGravity, this._options);
+  }
+
+  /**
+   * Open a level
+   */
+  openLevel() {
+    if (this._isShutDown) return;
+
+    this.adaptBoardDiv();
+    this._updateUndoRedoButtons();
+  }
+
+  /**
+   * Check whether to add the current state to the level stack
+   */
+  _checkLvlStack() {
+    const lastState = this._lvlStack[this._cLvl];
+    const cState = this._getStateString(true);
+    if (lastState !== cState) {
+      while (this._cLvl < this._lvlStack.length - 1) this._lvlStack.pop();
+      this._cLvl++;
+      this._lvlStack.push(cState);
+    }
+    this._updateUndoRedoButtons();
+  }
+
   /**
    * Set the selected simple button
    * @param {number} idx the index of the selected button
    */
   setSelectedSimpleButton(idx) {
+    if (this._isShutDown) return;
     this._snakeDragMode = false;
     for (let i=0; i<this._simpleActionDivs.length; i++) {
       if (i == idx) this._simpleActionDivs[i].setAttribute('class', 'lvl-edit-menu-btn selected');
@@ -428,6 +632,7 @@ class LevelEditor {
    * @param {number} idx the index of the selected button
    */
   setSelectedSnakeButton(idx) {
+    if (this._isShutDown) return;
     for (let i=0; i<this._snakeColorDivs.length; i++) {
       if (i == idx) this._snakeColorDivs[i].setAttribute('class', 'lvl-edit-color-btn selected');
       else this._snakeColorDivs[i].setAttribute('class', 'lvl-edit-color-btn');
@@ -439,6 +644,7 @@ class LevelEditor {
    * @param {number} idx the index of the selected button
    */
   setSelectedBlockButton(idx) {
+    if (this._isShutDown) return;
     for (let i=0; i<this._blockColorDivs.length; i++) {
       if (i == idx) this._blockColorDivs[i].setAttribute('class', 'lvl-edit-color-btn selected');
       else this._blockColorDivs[i].setAttribute('class', 'lvl-edit-color-btn');
@@ -451,6 +657,7 @@ class LevelEditor {
    * @param {number} dir 0: add, 1: subtract
    */
   changeBoardSize(side, dir) {
+    if (this._isShutDown) return;
     let shift = [0, 0];
     let nWidth = this._bWidth, nHeight = this._bHeight;
     if (dir == 1) {
@@ -586,6 +793,7 @@ class LevelEditor {
     }
 
     this.adaptBoardDiv();
+    this._checkLvlStack();
   }
 
   /**
@@ -594,6 +802,7 @@ class LevelEditor {
    * @param {number} y the y coordinate of the cell
    */
   mouseEnter(x, y) {
+    if (this._isShutDown) return;
     if (this._snakeDragMode && this._field[x][y] == EMPTY) {
       const idx = this._snakes.length - 1;
       const [lx, ly] = this._snakes[idx].getFront();
@@ -614,6 +823,7 @@ class LevelEditor {
       const idx = this._snakes.length - 1;
       const [lx, ly] = this._snakes[idx].getFront();
       if (lx == x && ly == y) return;
+      this._checkLvlStack();
       this._snakeDragMode = false;
     } else this._snakeDragMode = false;
   }
@@ -624,13 +834,15 @@ class LevelEditor {
    * @param {number} y the y coordinate of the cell
    */
   mouseLeave(x, y) {
-
+    if (this._isShutDown) return;
   }
   
   /**
    * Should be called when the mouse leaves the board
    */
   mouseFinalLeave() {
+    if (this._isShutDown) return;
+    if (this._snakeDragMode) this._checkLvlStack();
     this._snakeDragMode = false;
   }
 
@@ -640,6 +852,7 @@ class LevelEditor {
    * @param {number} y the y coordinate of the cell
    */
   mouseDown(x, y) {
+    if (this._isShutDown) return;
     if (this._addMode == SNAKE(0) && this._field[x][y] == EMPTY) {
       if (this._snakeMap.has(this._selectedSnake)) this.removeSnakeWithCharacter(this._selectedSnake);
       this._snakeDragMode = true;
@@ -659,6 +872,8 @@ class LevelEditor {
    * @param {number} y the y coordinate of the cell
    */
   mouseUp(x, y) {
+    if (this._isShutDown) return;
+    if (this._snakeDragMode) this._checkLvlStack();
     this._snakeDragMode = false;
   }
   
@@ -669,6 +884,7 @@ class LevelEditor {
    * @param {boolean} [rightClick] if set to true: indicates that the right mouse button was used
    */
   mouseClick(x, y, rightClick = false) {
+    if (this._isShutDown) return;
     let redraw = false;
 
     if (rightClick || this._addMode == DELETE) { // delete
@@ -782,6 +998,8 @@ class LevelEditor {
     if (this._portalPos.length == 1) this._portalPos.push([-1, -1]);
     if (redraw)
       this.adaptBoardDiv();
+      
+    this._checkLvlStack();
   }
   
   /**
@@ -791,6 +1009,7 @@ class LevelEditor {
    * @param {number} y the y coordinate of the part to remove
    */
   removeBlockPart(idx, x, y) {
+    if (this._isShutDown) return;
     if (this._blocks[idx].length == 1) this.removeBlockAtIdx(idx);
     else {
       const nQueue = new Queue();
@@ -812,6 +1031,7 @@ class LevelEditor {
    * @param {number} y the y coordinate of the part to remove
    */
   removeSnakePart(idx, x, y) {
+    if (this._isShutDown) return;
     if (this._snakes[idx].length == 1) this.removeSnakeAtIdx(idx);
     else {
       const nQueue = new Queue(); let mode = 0;
@@ -840,6 +1060,7 @@ class LevelEditor {
    * @param {string} c the character
    */
   removeBlockWithCharacter(c) {
+    if (this._isShutDown) return;
     if (!this._blockMap.has(c)) return;
     this.removeBlockAtIdx(this._blockMap.get(c));
   }
@@ -849,6 +1070,7 @@ class LevelEditor {
    * @param {number} idx the 0-based index
    */
   removeBlockAtIdx(idx) {
+    if (this._isShutDown) return;
     const oc = this._blockToCharacter[idx];
     const qu = this._blocks[idx];
     for (let i=0; i<qu.length; i++) {
@@ -876,6 +1098,7 @@ class LevelEditor {
    * @param {string} c the character
    */
   removeSnakeWithCharacter(c) {
+    if (this._isShutDown) return;
     if (!this._snakeMap.has(c)) return;
     this.removeSnakeAtIdx(this._snakeMap.get(c));
   }
@@ -885,6 +1108,7 @@ class LevelEditor {
    * @param {number} idx the 0-based index
    */
   removeSnakeAtIdx(idx) {
+    if (this._isShutDown) return;
     const oc = this._snakeToCharacter[idx];
     const qu = this._snakes[idx];
     for (let i=0; i<qu.length; i++) {
@@ -911,6 +1135,7 @@ class LevelEditor {
    * After a snake or block was removed, the target or portals might have to be reinserted
    */
   checkTargetPortalReinsertion() {
+    if (this._isShutDown) return;
     if (this._target[0] >= 0 && this._field[this._target[0]][this._target[1]] == EMPTY) {
       this._field[this._target[0]][this._target[1]] = TARGET;
       this.setStrVal(this._target[0], this._target[1], 'X');
@@ -930,6 +1155,7 @@ class LevelEditor {
    * @param {string} val the new character value
    */
   setStrVal(x, y, val) {
+    if (this._isShutDown) return;
     if (x < 0 || y < 0 || x >= this._bWidth || y >= this._bHeight) return;
     this._lines[y] = `${this._lines[y].substring(0, x)}${val}${this._lines[y].substring(x + 1, this._lines[y].length)}`;
   }
@@ -941,6 +1167,7 @@ class LevelEditor {
    * @return {string} the field value (from the string representation) at the given position
    */
   getStrVal(x, y) {
+    if (this._isShutDown) return '.';
     if (x < 0 || y < 0 || x >= this._bWidth || y >= this._bHeight) return;
     return this._lines[y][x];
   }
@@ -1048,6 +1275,7 @@ class LevelEditor {
    * @param {number} idx the index of the corresponding button
    */
   snakeColorSelect(c, idx) {
+    if (this._isShutDown) return;
     this._selectedSnake = c;
     this.setSelectedSnakeButton(idx);
   }
@@ -1058,6 +1286,7 @@ class LevelEditor {
    * @param {number} idx the index of the corresponding button
    */
   blockColorSelect(c, idx) {
+    if (this._isShutDown) return;
     this._selectedBlock = c;
     this.setSelectedBlockButton(idx);
   }
@@ -1066,6 +1295,7 @@ class LevelEditor {
    * Set the add mode to snake
    */
   snakeMode() {
+    if (this._isShutDown) return;
     this._addMode = SNAKE(0);
     this.setSelectedSimpleButton(0);
     this._snakeColorCont.style.display = 'inline-block';
@@ -1075,6 +1305,7 @@ class LevelEditor {
    * Set the add mode to block
    */
   blockMode() {
+    if (this._isShutDown) return;
     this._addMode = BLOCK(0);
     this.setSelectedSimpleButton(1);
     this._blockColorCont.style.display = 'inline-block';
@@ -1084,6 +1315,7 @@ class LevelEditor {
    * Set the add mode to obstacle
    */
   obstacleMode() {
+    if (this._isShutDown) return;
     this._addMode = OBSTACLE;
     this.setSelectedSimpleButton(2);
   }
@@ -1092,6 +1324,7 @@ class LevelEditor {
    * Set the add mode to obstacle
    */
   spikeMode() {
+    if (this._isShutDown) return;
     this._addMode = SPIKE;
     this.setSelectedSimpleButton(3);
   }
@@ -1100,6 +1333,7 @@ class LevelEditor {
    * Set the add mode to obstacle
    */
   fruitMode() {
+    if (this._isShutDown) return;
     this._addMode = FRUIT;
     this.setSelectedSimpleButton(4);
   }
@@ -1108,6 +1342,7 @@ class LevelEditor {
    * Set the add mode to obstacle
    */
   portalMode() {
+    if (this._isShutDown) return;
     this._addMode = PORTAL;
     this.setSelectedSimpleButton(5);
   }
@@ -1116,6 +1351,7 @@ class LevelEditor {
    * Set the add mode to obstacle
    */
   targetMode() {
+    if (this._isShutDown) return;
     this._addMode = TARGET;
     this.setSelectedSimpleButton(6);
   }
@@ -1124,6 +1360,7 @@ class LevelEditor {
    * Set the add mode to delete
    */
   deleteMode() {
+    if (this._isShutDown) return;
     this._addMode = DELETE;
     this.setSelectedSimpleButton(7);
   }

@@ -193,6 +193,7 @@ class GameBoard {
     this._stateStackIdx = 0;
     this._fallThrough = fallThrough;
     this._changeGravity = changeGravity;
+    this._initialState = gameState.toString();
     this._state = gameState;
     this._noCyclicAni = noCyclicAni;
     this._noAni = noAni;
@@ -648,7 +649,7 @@ class GameBoard {
       this._drawer.zoomOut();
     } else if (key === 'escape' || key === 'm') {
       for (let i=0; i<this._menuOpenListeners.length; i++)
-        this._menuOpenListeners[i]();
+        this._menuOpenListeners[i](this._initialState, this._state.toString(), this._fallThrough, this._changeGravity, this._options);
       this._noOps = true;
     }
     if (check && oldState !== this._state.toString()) {
