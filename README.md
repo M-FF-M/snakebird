@@ -9,10 +9,10 @@ and can be bought...
 
 This __work is still in progress__. You can currently play all the original levels at
 https://m-ff-m.github.io/snakebird/ or clone the repository and open index.html. In
-addition, there are some levels used during development - however, they don't pose
-an intellectual challenge and there also is a level editor. Currently, levels can only
-be saved in localStorage. An option to save levels on disk will be added in the near
-future. Visit [github.com/thejoshwolfe/snakefall](https://github.com/thejoshwolfe/snakefall)
+addition, there are some levels that were used during development - however, they don't pose
+an intellectual challenge. You may also create your own levels using the level editor.
+Currently, levels can only be saved in localStorage. An option to save levels on disk will
+be added in the near future. Visit [github.com/thejoshwolfe/snakefall](https://github.com/thejoshwolfe/snakefall)
 for more levels (a converter for their level format may follow in the future as well).
 
 ## Original vs. JS implementation
