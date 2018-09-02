@@ -47,7 +47,7 @@ div.bordered-text {
   color: rgba(255, 255, 255, 1);
 }
 
-div.bordered-text, .lvl-menu-checkbox-label {
+div.bordered-text, .lvl-menu-checkbox-label, .text-field-label {
   text-shadow:
      -0.1em     0em 0em rgba(55, 117, 161, 1),  
       0.1em     0em 0em rgba(55, 117, 161, 1),
@@ -57,6 +57,12 @@ div.bordered-text, .lvl-menu-checkbox-label {
      0.07em -0.07em 0em rgba(55, 117, 161, 1),
     -0.07em  0.07em 0em rgba(55, 117, 161, 1),
      0.07em  0.07em 0em rgba(55, 117, 161, 1);
+}
+
+.text-field-label {
+  display: block;
+  text-align: center;
+  color: rgba(255, 255, 255, 1);
 }
 
 .lvl-menu-checkbox-label {
@@ -168,7 +174,7 @@ div.bordered-text, .lvl-menu-checkbox-label {
   background-color: rgba(78, 168, 188, 1);
 }
 
-.lvl-menu-inner-container, .lvl-sel-inner-container, .lvl-edit-inner-container {
+.lvl-menu-inner-container, .lvl-sel-inner-container, .lvl-edit-inner-container, .lvl-edit-overlay-inner {
   padding: 3em;
   margin-left: auto;
   margin-right: auto;
@@ -209,4 +215,27 @@ input[type="button"] {
 
 input[type="button"]:hover, input[type="button"]:focus {
   background-color: rgba(78, 168, 188, 1);
+}
+
+input[type="text"] {
+  display: block;
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 1em;
+  margin-bottom: 1em;
+  font-size: 1em;
+  padding: 0.5em;
+  border-radius: 0.5em;
+  background-clip: border-box;
+  background-color: rgb(200, 228, 234, 1);
+  box-shadow: 0em 0.2em 0em 0em rgba(55, 117, 161, 1);
+  color: rgb(0, 0, 0, 1);
+  font-family: inherit;
+  outline: none;
+  border: 0.125em solid rgba(78, 141, 188, 0);
+}
+
+input[type="text"]:hover, input[type="text"]:focus {
+  border: 0.125em solid rgba(78, 141, 188, 1);
 }

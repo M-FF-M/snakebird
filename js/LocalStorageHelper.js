@@ -5,7 +5,8 @@
  */
 const DEFAULT_VARS = [
   ['noCyclicAni', false],
-  ['noAni', false]
+  ['noAni', false],
+  ['myLevels', []]
 ];
 
 /**
@@ -45,6 +46,26 @@ function checkEqual(objA, objB) {
 }
 
 /**
+ * Clone the given value (deep clone)
+ * @param {any} val the value to clone
+ * @return {any} the cloned value
+ */
+function deepClone(val) {
+  if (typeof val === 'object') {
+    if (val instanceof Array) {
+      const ret = [];
+      for (let i=0; i<val.length; i++) ret[i] = deepClone(val[i]);
+      return ret;
+    }
+    const ret = {};
+    for (const prop in val) {
+      if (val.hasOwnProperty(prop)) ret[prop] = deepClone(val[prop]);
+    }
+    return ret;
+  } else return val;
+}
+
+/**
  * Simplifies dealing with local storage (in particular, with variable default values)
  */
 class LocalStorageHelper {
@@ -72,9 +93,9 @@ class LocalStorageHelper {
    * @return {any} its value (undefined, if the value is not set)
    */
   get(varname) {
-    const inStore = this.store.getItem(varname);
+    const inStore = this.store.getItem(`SNAKEBIRD_${varname}`);
     if (inStore) return JSON.parse(inStore);
-    if (this.defaultMap.has(varname)) return this.defaultMap.get(varname);
+    if (this.defaultMap.has(varname)) return deepClone(this.defaultMap.get(varname));
     return undefined;
   }
 
@@ -86,11 +107,11 @@ class LocalStorageHelper {
   set(varname, value) {
     if (this.defaultMap.has(varname)) {
       if (checkEqual(value, this.defaultMap.get(varname))) {
-        this.store.removeItem(varname);
+        this.store.removeItem(`SNAKEBIRD_${varname}`);
         return;
       }
     }
-    this.store.setItem(varname, JSON.stringify(value));
+    this.store.setItem(`SNAKEBIRD_${varname}`, JSON.stringify(value));
   }
 
   /**
@@ -98,7 +119,7 @@ class LocalStorageHelper {
    * @param {string} varname the name of the variable
    */
   remove(varname) {
-    this.store.removeItem(varname);
+    this.store.removeItem(`SNAKEBIRD_${varname}`);
   }
 }
 

@@ -47,11 +47,14 @@ class LevelEditor {
    * if the object blocking its path is moved at the same time
    * @param {boolean} [options.allowTailBiting] if allowMovingWithoutSpace is set to true, but this
    * parameter is set to false, a snake can move without space if it is not blocking itself
+   * @param {string} [name] the name of the opened level
    */
-  constructor(parentElem, levelSel, gameState = DEFAULT_GAME_STATE, fallThrough = false, changeGravity = false, options = {}) {
+  constructor(parentElem, levelSel, gameState = DEFAULT_GAME_STATE, fallThrough = false, changeGravity = false, options = {}, name = '') {
     this._parent = parentElem;
     this._isShutDown = false;
     this._levelSel = levelSel;
+    this._cLvlName = name;
+    this._noOps = true;
 
     this._loadLevel(gameState, fallThrough, changeGravity, options);
     this._smallMountains = 7;
@@ -104,6 +107,7 @@ class LevelEditor {
     this._selectedSnake = 'R';
     this._selectedBlock = 'a';
     this._snakeDragMode = false;
+    this._overlay = null;
 
     window.addEventListener('resize', this.resize);
     this._cDrawer = null;
@@ -255,6 +259,7 @@ class LevelEditor {
   show() {
     if (this._isShutDown) return;
     this._parentDiv.style.display = 'block';
+    this._noOps = false;
   }
   
   /**
@@ -263,6 +268,7 @@ class LevelEditor {
   hide() {
     if (this._isShutDown) return;
     this._parentDiv.style.display = 'none';
+    this._noOps = true;
   }
 
   /**
@@ -327,8 +333,7 @@ class LevelEditor {
 
     const explDivTmp = document.createElement('div');
     explDivTmp.setAttribute('class', 'bordered-text');
-    explDivTmp.innerHTML = 'Levels cannot be saved yet. The development is still in progress.';
-    // explDivTmp.innerHTML = 'Caution: unsaved levels will be lost irrevocably. No warnings will be displayed!';
+    explDivTmp.innerHTML = 'Caution: unsaved levels will be lost irrevocably. No warnings will be displayed!';
     this._containerDiv.appendChild(explDivTmp);
 
     const instrTextDiv = document.createElement('div');
@@ -516,6 +521,7 @@ class LevelEditor {
    */
   press(event) {
     if (this._isShutDown) return;
+    if (this._noOps) return;
     const key = event.key.toLowerCase();
     if (key === 'z' && (event.ctrlKey || event.shiftKey)) {
       event.preventDefault();
@@ -550,6 +556,7 @@ class LevelEditor {
    */
   undo() {
     if (this._isShutDown) return;
+    if (this._noOps) return;
     if (this._cLvl > 0) {
       this._cLvl--;
       this._loadLevel(this._lvlStack[this._cLvl], this._fallThrough, this._changeGravity, this._options, false);
@@ -563,6 +570,7 @@ class LevelEditor {
    */
   redo() {
     if (this._isShutDown) return;
+    if (this._noOps) return;
     if (this._cLvl < this._lvlStack.length - 1) {
       this._cLvl++;
       this._loadLevel(this._lvlStack[this._cLvl], this._fallThrough, this._changeGravity, this._options, false);
@@ -571,12 +579,173 @@ class LevelEditor {
     this._updateUndoRedoButtons();
   }
 
+  _checkLevelValidity() {
+    this._notFinishedDescr = ''; this._isNotFinished = false;
+    if (this._target[0] < 0) {
+      this._isNotFinished = true;
+      this._notFinishedDescr = 'The target hasn\'t been added yet.';
+    }
+    if (!this._isNotFinished && this._portalPos.length == 2) {
+      if (this._portalPos[1][0] < 0) {
+        this._isNotFinished = true;
+        this._notFinishedDescr = 'Only one of two portals has been added.';
+      }
+    }
+    if (!this._isNotFinished) {
+      const cState = this._getGameState();
+      const res = gameTransition(cState, null, DOWN, this._fallThrough, DOWN, true, this._changeGravity, this._options);
+      const nState = res[3];
+      if (res[1] == -2) {
+        this._isNotFinished = true;
+        this._notFinishedDescr = 'The current state immediately leads to the death of a snake. This is not a valid initial level state.';
+      } else if (res[1] == -1) {
+        this._isNotFinished = true;
+        this._notFinishedDescr = 'The current state immediately leads to an endless loop. This is not a valid initial level state.';
+      } else if (res[1] == 1) {
+        this._isNotFinished = true;
+        this._notFinishedDescr = 'The current state immediately leads to the game being won. This is not a valid initial level state.';
+      }
+      if (!this._isNotFinished) {
+        if (cState.toString() != nState.toString()) {
+          this._isNotFinished = true;
+          this._notFinishedDescr = 'Not all snakebirds and blocks are on solid ground. This is not a valid initial level state.';
+        }
+      }
+    }
+  }
+
+  _showOverlay(heading, txt = '', closeButton = false) {
+    this._noOps = true;
+    this._overlay = document.createElement('div');
+    this._overlay.setAttribute('class', 'lvl-edit-overlay');
+    this._overlay.style.zIndex = '30';
+    this._overlay.style.position = 'absolute';
+    this._overlay.style.left = '0px';
+    this._overlay.style.top = '0px';
+    this._overlay.style.overflow = 'auto';
+    this._overlay.style.backgroundColor = 'rgba(255, 255, 255, 0.75)';
+    this._overlay.style.fontFamily = '\'Fredoka One\'';
+
+    const innerOverlay = document.createElement('div');
+    innerOverlay.setAttribute('class', 'lvl-edit-overlay-inner');
+
+    const h2 = document.createElement('h2');
+    h2.innerHTML = heading;
+    innerOverlay.appendChild(h2);
+
+    if (txt.length > 0) {
+      const hintDiv = document.createElement('div');
+      hintDiv.setAttribute('class', 'bordered-text');
+      hintDiv.innerHTML = txt;
+      innerOverlay.appendChild(hintDiv);
+    }
+
+    if (closeButton) {
+      const inp = document.createElement('input');
+      inp.setAttribute('type', 'button');
+      inp.setAttribute('value', 'Close');
+      inp.addEventListener('click', () => this._hideOverlay());
+      innerOverlay.appendChild(inp);
+    }
+
+    this._overlay.appendChild(innerOverlay);
+    document.body.appendChild(this._overlay);
+    this.resize();
+
+    return innerOverlay;
+  }
+
+  _hideOverlay() {
+    this._noOps = false;
+    this._overlay.style.display = 'none';
+  }
+
   /**
    * Save the level
    */
   saveLevel() {
     if (this._isShutDown) return;
-    window.alert('Saving is not possible yet!');
+    this._noOps = true;
+    this._myLevels = STORAGE.get('myLevels');
+    this._levelNamesArr = [];
+    this._levelNames = {};
+    for (let i=0; i<this._myLevels.length; i++) {
+      this._levelNames[this._myLevels[i].name] = true;
+      this._levelNamesArr.push(this._myLevels[i].name);
+    }
+    this._checkLevelValidity();
+
+    let addTxt = '';
+    if (this._isNotFinished) {
+      addTxt = 'The level you are about to save is not finished yet. '
+        + this._notFinishedDescr
+        + ' You can still save the level, but you cannot play it.';
+    }
+    const innerOverlay = this._showOverlay('Save Level', addTxt);
+
+    const label = document.createElement('label');
+    label.setAttribute('for', 'level-name-input');
+    label.setAttribute('class', 'text-field-label');
+    label.innerHTML = 'Name:';
+    innerOverlay.appendChild(label);
+
+    const txtInp = document.createElement('input');
+    txtInp.setAttribute('type', 'text');
+    txtInp.setAttribute('id', 'level-name-input');
+    txtInp.setAttribute('value', this._cLvlName);
+    txtInp.addEventListener('input', () => this._updateLvlName(txtInp.value));
+    innerOverlay.appendChild(txtInp);
+
+    this._nameHintDiv = document.createElement('div');
+    this._nameHintDiv.setAttribute('class', 'bordered-text');
+    this._nameHintDiv.innerHTML = this._getNameHint();
+    innerOverlay.appendChild(this._nameHintDiv);
+
+    const inp1 = document.createElement('input');
+    inp1.setAttribute('type', 'button');
+    inp1.setAttribute('value', 'Cancel');
+    inp1.addEventListener('click', () => this._hideOverlay());
+    innerOverlay.appendChild(inp1);
+
+    const inp2 = document.createElement('input');
+    inp2.setAttribute('type', 'button');
+    inp2.setAttribute('value', 'Save');
+    inp2.addEventListener('click', () => this._completeSave());
+    innerOverlay.appendChild(inp2);
+  }
+
+  _updateLvlName(newName) {
+    this._cLvlName = newName;
+    this._nameHintDiv.innerHTML = this._getNameHint();
+  }
+
+  _getNameHint() {
+    if (this._cLvlName == '') return 'Name must not be empty!';
+    if (this._levelNames[this._cLvlName]) return 'Name has already been used. The existing level will be overwritten when you press save.';
+    return 'Name hasn\'t been used yet.';
+  }
+
+  _completeSave() {
+    if (this._cLvlName != '') {
+      let idx = this._myLevels.length;
+      for (let i=0; i<this._myLevels.length; i++) {
+        if (this._myLevels[i].name == this._cLvlName) {
+          idx = i;
+          break;
+        }
+      }
+      this._myLevels[idx] = {
+        name: this._cLvlName,
+        fallThrough: this._fallThrough,
+        changeGravity: this._changeGravity,
+        options: this._options,
+        board: this._getStateString(true),
+        notFinished:  this._isNotFinished
+      };
+      STORAGE.set('myLevels', this._myLevels);
+      this._hideOverlay();
+      this._levelSel.rebuildHTML();
+    }
   }
 
   /**
@@ -584,8 +753,14 @@ class LevelEditor {
    */
   playLevel() {
     if (this._isShutDown) return;
-    this.mainMenu();
-    this._levelSel.openRawLevel(this._getGameState(), this._fallThrough, this._changeGravity, this._options);
+    if (this._noOps) return;
+    this._checkLevelValidity();
+    if (this._isNotFinished) {
+      const innerOverlay = this._showOverlay('Level not finished', 'The level cannot be played yet. ' + this._notFinishedDescr, true);
+    } else {
+      this.mainMenu();
+      this._levelSel.openRawLevel(this._getGameState(), this._fallThrough, this._changeGravity, this._options, this._cLvlName);
+    }
   }
 
   /**
@@ -593,9 +768,12 @@ class LevelEditor {
    */
   openLevel() {
     if (this._isShutDown) return;
+    if (this._noOps) return;
 
     this.adaptBoardDiv();
     this._updateUndoRedoButtons();
+    window.alert('Development is still in progress. To open one of your levels, open the main menu, start the level and choose '
+      + 'open level in level editor in pause menu.');
   }
 
   /**
@@ -658,6 +836,7 @@ class LevelEditor {
    */
   changeBoardSize(side, dir) {
     if (this._isShutDown) return;
+    if (this._noOps) return;
     let shift = [0, 0];
     let nWidth = this._bWidth, nHeight = this._bHeight;
     if (dir == 1) {
@@ -803,6 +982,7 @@ class LevelEditor {
    */
   mouseEnter(x, y) {
     if (this._isShutDown) return;
+    if (this._noOps) return;
     if (this._snakeDragMode && this._field[x][y] == EMPTY) {
       const idx = this._snakes.length - 1;
       const [lx, ly] = this._snakes[idx].getFront();
@@ -835,6 +1015,7 @@ class LevelEditor {
    */
   mouseLeave(x, y) {
     if (this._isShutDown) return;
+    if (this._noOps) return;
   }
   
   /**
@@ -842,6 +1023,7 @@ class LevelEditor {
    */
   mouseFinalLeave() {
     if (this._isShutDown) return;
+    if (this._noOps) return;
     if (this._snakeDragMode) this._checkLvlStack();
     this._snakeDragMode = false;
   }
@@ -853,6 +1035,7 @@ class LevelEditor {
    */
   mouseDown(x, y) {
     if (this._isShutDown) return;
+    if (this._noOps) return;
     if (this._addMode == SNAKE(0) && this._field[x][y] == EMPTY) {
       if (this._snakeMap.has(this._selectedSnake)) this.removeSnakeWithCharacter(this._selectedSnake);
       this._snakeDragMode = true;
@@ -873,6 +1056,7 @@ class LevelEditor {
    */
   mouseUp(x, y) {
     if (this._isShutDown) return;
+    if (this._noOps) return;
     if (this._snakeDragMode) this._checkLvlStack();
     this._snakeDragMode = false;
   }
@@ -885,6 +1069,7 @@ class LevelEditor {
    */
   mouseClick(x, y, rightClick = false) {
     if (this._isShutDown) return;
+    if (this._noOps) return;
     let redraw = false;
 
     if (rightClick || this._addMode == DELETE) { // delete
@@ -1267,6 +1452,15 @@ class LevelEditor {
     this._parentDiv.style.height = `${this._height}px`;
     this._parentDiv.style.minHeight = `${this._height}px`;
     this._parentDiv.style.maxHeight = `${this._height}px`;
+
+    if (this._overlay != null) {
+      this._overlay.style.width = `${this._width}px`;
+      this._overlay.style.minWidth = `${this._width}px`;
+      this._overlay.style.maxWidth = `${this._width}px`;
+      this._overlay.style.height = `${this._height}px`;
+      this._overlay.style.minHeight = `${this._height}px`;
+      this._overlay.style.maxHeight = `${this._height}px`;
+    }
   }
 
   /**

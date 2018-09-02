@@ -51,6 +51,8 @@ class LevelSelector {
     this._parent = parentElem;
     this._lvlCollections = levelCollections;
     this._isShutDown = false;
+    this._lastLvlName = '';
+    this._hasMyLevels = false;
 
     this._parentDiv = document.createElement('div');
     this._parentDiv.style.position = 'absolute';
@@ -101,6 +103,16 @@ class LevelSelector {
       return ret;
     };
 
+    const myLevels = STORAGE.get('myLevels');
+    if (myLevels && myLevels.length > 0) {
+      this._lvlCollections.splice(0, this._hasMyLevels ? 1 : 0, new LevelCollection('My Levels', myLevels));
+      this._hasMyLevels = true;
+    } else {
+      if (this._hasMyLevels)
+        this._lvlCollections.splice(0, 1);
+      this._hasMyLevels = false;
+    }
+    
     this._parentDiv.innerHTML = '';
     this._containerDiv = document.createElement('div');
     this._parentDiv.appendChild(this._containerDiv);
@@ -163,6 +175,7 @@ class LevelSelector {
       hTR.innerHTML = '<th>Level</th><th colspan="4">Peculiarities</th>';
       table.appendChild(hTR);
       for (let k=0; k<this._lvlCollections[i].levels.length; k++) {
+        if (this._lvlCollections[i].levels[k].notFinished) continue;
         const tr = document.createElement('tr');
         const opt1 = this._lvlCollections[i].levels[k].fallThrough;
         const opt2 = this._lvlCollections[i].levels[k].changeGravity;
@@ -312,7 +325,7 @@ class LevelSelector {
       this._parentDiv.style.display = 'none';
       if (this._lvlEditor != null) this._lvlEditor.shutDown();
       this._lvlEditor = new LevelEditor(document.body, this, this._lastInitialState, this._lastFallThrough,
-        this._lastChangeGravity, this._lastOptions);
+        this._lastChangeGravity, this._lastOptions, this._lastLvlName);
       this._lvlEditor.show();
     }
   }
@@ -328,7 +341,7 @@ class LevelSelector {
       this._parentDiv.style.display = 'none';
       if (this._lvlEditor != null) this._lvlEditor.shutDown();
       this._lvlEditor = new LevelEditor(document.body, this, this._lastCurrentState, this._lastFallThrough,
-        this._lastChangeGravity, this._lastOptions);
+        this._lastChangeGravity, this._lastOptions, this._lastLvlName);
       this._lvlEditor.show();
     }
   }
@@ -394,6 +407,7 @@ class LevelSelector {
   openLevel(col, idx) {
     if (this._isShutDown) return;
     this._parentDiv.style.display = 'none';
+    this._lastLvlName = this._lvlCollections[col].levels[idx].name;
     this._cGameBoard = fromLevelDescription(document.body, this._lvlCollections[col].levels[idx], STORAGE.get('noCyclicAni'), STORAGE.get('noAni'));
     this._cGameBoard.addEventListener('game won', () => this.levelWon());
     this._cGameBoard.addEventListener('open menu',
@@ -414,10 +428,12 @@ class LevelSelector {
    * if the object blocking its path is moved at the same time
    * @param {boolean} options.allowTailBiting if allowMovingWithoutSpace is set to true, but this
    * parameter is set to false, a snake can move without space if it is not blocking itself
+   * @param {string} [name] the name of the opened level
    */
-  openRawLevel(state, fallThrough, changeGravity, options) {
+  openRawLevel(state, fallThrough, changeGravity, options, name = '') {
     if (this._isShutDown) return;
     this._parentDiv.style.display = 'none';
+    this._lastLvlName = name;
     this._cGameBoard = new GameBoard(document.body, state, fallThrough, changeGravity, options, STORAGE.get('noCyclicAni'), STORAGE.get('noAni'));
     this._cGameBoard.addEventListener('game won', () => this.levelWon());
     this._cGameBoard.addEventListener('open menu',
