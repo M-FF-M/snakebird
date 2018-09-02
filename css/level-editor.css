@@ -9,6 +9,14 @@
   margin: 0em;
 }
 
+.lvl-edit-board-pm-container {
+  display: block;
+  white-space: nowrap;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .lvl-edit-square {
   display: inline-block;
   vertical-align: top;

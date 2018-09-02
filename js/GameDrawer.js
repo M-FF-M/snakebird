@@ -925,6 +925,7 @@ class GameDrawer {
         let noShrub = false;
         if (sy - 1 >= 0 && (this._fruitPortalTargetArr[sx][sy - 1] == FRUIT
           || this._fruitPortalTargetArr[sx][sy - 1] == PORTAL
+          || this._fruitPortalTargetArr[sx][sy - 1] == TARGET
           || this._fruitPortalTargetArr[sx][sy - 1] == SPIKE)) noShrub = true;
         if (val == OBSTACLE) {
           drawGrass(con, bx, by, adjVals, bSize, sx, sy, globalTime, noShrub);

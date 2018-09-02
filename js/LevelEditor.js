@@ -346,7 +346,7 @@ class LevelEditor {
     const instrTextDiv2 = document.createElement('div');
     instrTextDiv2.setAttribute('class', 'bordered-text');
     instrTextDiv2.innerHTML = 'Note that snakebirds and portals or targets may not be layered on top of each other, even though such a '
-      + 'state could be a valid game state (however, all the available levels do not start in a state where a snakebird is on top of a '
+      + 'state could be a valid game state (however, none of the available levels start in a state where a snakebird is on top of a '
       + 'portal or target).';
     this._containerDiv.appendChild(instrTextDiv2);
 
@@ -452,6 +452,8 @@ class LevelEditor {
     this._containerDiv.appendChild(this._blockColorCont);
     this._blockColorCont.style.display = 'none';
 
+    const span = document.createElement('span');
+    span.setAttribute('class', 'lvl-edit-board-pm-container');
     this._pmButtons = [];
     for (let i=0; i<4; i++) { // top, left, right, bottom
       this._pmButtons[i] = [];
@@ -477,14 +479,15 @@ class LevelEditor {
       else if (i == 2) this._pmButtons[i][0].setAttribute('class', 'lvl-edit-pm right');
       else this._pmButtons[i][0].setAttribute('class', 'lvl-edit-pm bottom');
     }
-    this._containerDiv.appendChild(this._pmButtons[0][0]);
-    this._containerDiv.appendChild(this._pmButtons[1][0]);
+    span.appendChild(this._pmButtons[0][0]);
+    span.appendChild(this._pmButtons[1][0]);
     this._boardDiv = document.createElement('div');
     this._boardDiv.style.display = 'inline-block';
     this._boardDiv.setAttribute('class', 'lvl-edit-board-container');
-    this._containerDiv.appendChild(this._boardDiv);
-    this._containerDiv.appendChild(this._pmButtons[2][0]);
-    this._containerDiv.appendChild(this._pmButtons[3][0]);
+    span.appendChild(this._boardDiv);
+    span.appendChild(this._pmButtons[2][0]);
+    span.appendChild(this._pmButtons[3][0]);
+    this._containerDiv.appendChild(span);
 
     const toggleActions = [
       ['Wrap-Around (snakebirds appear again on the other side)', val => this._fallThrough = val, this._fallThrough],
@@ -580,6 +583,7 @@ class LevelEditor {
   }
 
   _checkLevelValidity() {
+    if (this._isShutDown) return;
     this._notFinishedDescr = ''; this._isNotFinished = false;
     if (this._target[0] < 0) {
       this._isNotFinished = true;
@@ -619,6 +623,7 @@ class LevelEditor {
   }
 
   _showOverlay(heading, txt = '', closeButton = false) {
+    if (this._isShutDown) return;
     this._noOps = true;
     this._overlay = document.createElement('div');
     this._overlay.setAttribute('class', 'lvl-edit-overlay');
@@ -660,6 +665,7 @@ class LevelEditor {
   }
 
   _hideOverlay() {
+    if (this._isShutDown) return;
     this._noOps = false;
     this._overlay.style.display = 'none';
   }
@@ -669,7 +675,6 @@ class LevelEditor {
    */
   saveLevel() {
     if (this._isShutDown) return;
-    this._noOps = true;
     this._myLevels = STORAGE.get('myLevels');
     this._levelNamesArr = [];
     this._levelNames = {};
@@ -719,17 +724,20 @@ class LevelEditor {
   }
 
   _updateLvlName(newName) {
+    if (this._isShutDown) return;
     this._cLvlName = newName;
     this._nameHintDiv.innerHTML = this._getNameHint();
   }
 
   _getNameHint() {
+    if (this._isShutDown) return;
     if (this._cLvlName == '') return 'Name must not be empty!';
     if (this._levelNames[this._cLvlName]) return 'Name has already been used. The existing level will be overwritten when you press save.';
     return 'Name hasn\'t been used yet.';
   }
 
   _completeSave() {
+    if (this._isShutDown) return;
     if (this._cLvlName != '') {
       let idx = this._myLevels.length;
       for (let i=0; i<this._myLevels.length; i++) {
@@ -773,11 +781,146 @@ class LevelEditor {
   openLevel() {
     if (this._isShutDown) return;
     if (this._noOps) return;
+    
+    const innerOverlay = this._showOverlay('Open Level', 'Select a level to open from one of the options below.');
 
+    const inp1 = document.createElement('input');
+    inp1.setAttribute('type', 'button');
+    inp1.setAttribute('value', 'Cancel');
+    inp1.addEventListener('click', () => this._hideOverlay());
+    innerOverlay.appendChild(inp1);
+
+    this._myLevels = STORAGE.get('myLevels');
+    if (this._myLevels.length > 0) {
+      const myH = document.createElement('h2');
+      myH.innerHTML = 'My Levels';
+      innerOverlay.appendChild(myH);
+      const table = document.createElement('table');
+      table.setAttribute('class', 'lvl-sel-collection');
+      const hTR = document.createElement('tr');
+      hTR.innerHTML = '<th></th><th>Level</th><th colspan="4">Peculiarities</th>';
+      table.appendChild(hTR);
+      for (let k=0; k<this._myLevels.length; k++) {
+        const tr = document.createElement('tr');
+        const opt1 = this._myLevels[k].fallThrough;
+        const opt2 = this._myLevels[k].changeGravity;
+        const opt3 = this._myLevels[k].options && this._myLevels[k].options.allowMovingWithoutSpace;
+        const opt4 = this._myLevels[k].options && this._myLevels[k].options.allowTailBiting;
+        const delTD = document.createElement('td');
+        delTD.setAttribute('class', 'icon-td');
+        delTD.innerHTML = '<img title="Delete" class="info-icon" src="css/delete.svg"/>';
+        delTD.addEventListener('click', () => this._deleteLvl(k));
+        tr.appendChild(delTD);
+        const { name = '', board, fallThrough = false, changeGravity = false, options = {} } = this._myLevels[k];
+        const { allowMovingWithoutSpace = false, allowTailBiting = false } = options;
+        for (let i=0; i<5; i++) {
+          const ctd = document.createElement('td');
+          if (i == 0) ctd.innerHTML = this._myLevels[k].name;
+          else {
+            if (i == 1 && !opt1 && !opt2 && !opt3 && !opt4) {
+              ctd.setAttribute('colspan', '4');
+              ctd.innerHTML = 'none';
+              tr.appendChild(ctd);
+              ctd.addEventListener('click', () =>
+                this._completeOpen(name, board, fallThrough, changeGravity, { allowMovingWithoutSpace, allowTailBiting }));
+              break;
+            }
+            ctd.setAttribute('class', 'icon-td');
+            let iHTML = '';
+            if (i == 1 && opt1) iHTML = '<img title="Wrap-Around" class="info-icon" src="css/fall-through.svg"/>';
+            else if (i == 2 && opt2) iHTML = '<img title="Gravity Change" class="info-icon" src="css/gravity.svg"/>';
+            else if (i == 3 && opt3) iHTML = '<img title="No Space Movement" class="info-icon" src="css/no-space.svg"/>';
+            else if (i == 4 && opt4) iHTML = '<img title="Tail Biting" class="info-icon" src="css/tail-biting.svg"/>';
+            ctd.innerHTML = iHTML;
+          }
+          tr.appendChild(ctd);
+          ctd.addEventListener('click', () =>
+            this._completeOpen(name, board, fallThrough, changeGravity, { allowMovingWithoutSpace, allowTailBiting }));
+        }
+        table.appendChild(tr);
+      }
+      innerOverlay.appendChild(table);
+    }
+
+    const lnkH = document.createElement('h2');
+    lnkH.innerHTML = 'Snakefall Level Link';
+    innerOverlay.appendChild(lnkH);
+    const lnkInp = document.createElement('input');
+    lnkInp.setAttribute('type', 'text');
+    lnkInp.addEventListener('input', () => this._checkSnakefallLink(lnkInp.value));
+    innerOverlay.appendChild(lnkInp);
+
+    this._linkHintDiv = document.createElement('div');
+    this._linkHintDiv.setAttribute('class', 'bordered-text');
+    this._linkHintDiv.innerHTML = '';
+    innerOverlay.appendChild(this._linkHintDiv);
+
+    const inp2 = document.createElement('input');
+    inp2.setAttribute('type', 'button');
+    inp2.setAttribute('value', 'OK');
+    inp2.addEventListener('click', () => this._loadSnakefallLevel());
+    innerOverlay.appendChild(inp2);
+
+    const inp3 = document.createElement('input');
+    inp3.setAttribute('type', 'button');
+    inp3.setAttribute('value', 'Cancel');
+    inp3.addEventListener('click', () => this._hideOverlay());
+    innerOverlay.appendChild(inp3);
+
+    this._checkSnakefallLink('');
+  }
+
+  _checkSnakefallLink(val) {
+    try {
+      this._snakefallLevel = parseSnakefallLevel(val);
+      this._linkHintDiv.innerHTML = 'This is a valid Snakefall level.';
+    } catch (exc) {
+      this._linkHintDiv.innerHTML = `This is not a valid Snakefall level (error message: ${exc.message}).`;
+      this._snakefallLevel = undefined;
+    }
+  }
+
+  _loadSnakefallLevel() {
+    if (this._snakefallLevel) {
+      this._hideOverlay();
+      this._cLvlName = 'Snakefall Level';
+      this._loadLevel(this._snakefallLevel, false, false, { allowMovingWithoutSpace: true, allowTailBiting: false });
+      this.adaptBoardDiv();
+      this._updateUndoRedoButtons();
+    }
+  }
+
+  _deleteLvl(idx) {
+    this._hideOverlay();
+    const lvlName = this._myLevels[idx].name;
+    const innerOverlay = this._showOverlay('Delete Level', `Are you sure you want to delete the following level: ${lvlName}?`);
+
+    const inp1 = document.createElement('input');
+    inp1.setAttribute('type', 'button');
+    inp1.setAttribute('value', 'Yes');
+    inp1.addEventListener('click', () => this._completeDelete(idx));
+    innerOverlay.appendChild(inp1);
+
+    const inp2 = document.createElement('input');
+    inp2.setAttribute('type', 'button');
+    inp2.setAttribute('value', 'No');
+    inp2.addEventListener('click', () => this._hideOverlay());
+    innerOverlay.appendChild(inp2);
+  }
+
+  _completeDelete(idx) {
+    this._hideOverlay();
+    this._myLevels.splice(idx, 1);
+    STORAGE.set('myLevels', this._myLevels);
+    this._levelSel.rebuildHTML();
+  }
+
+  _completeOpen(name, board, fallThrough, changeGravity, options) {
+    this._hideOverlay();
+    this._cLvlName = name;
+    this._loadLevel(board, fallThrough, changeGravity, options);
     this.adaptBoardDiv();
     this._updateUndoRedoButtons();
-    window.alert('Development is still in progress. To open one of your levels, open the main menu, start the level and choose '
-      + 'open level in level editor in pause menu.');
   }
 
   /**
