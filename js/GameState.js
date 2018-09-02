@@ -182,7 +182,7 @@ class GameState {
      */
     this.width = this.lines[0].length;
     /**
-     * Maps snake characters (A-W) to the corresponding index in the snakes array
+     * Maps snake characters (A-U) to the corresponding index in the snakes array
      * @type {Map<string,number>}
      */
     this.snakeMap = new Map();
@@ -197,7 +197,7 @@ class GameState {
      */
     this.snakeToCharacter = [];
     /**
-     * Maps block characters (a-w) to the corresponding index in the blocks array
+     * Maps block characters (a-u) to the corresponding index in the blocks array
      * @type {Map<string,number>}
      */
     this.blockMap = new Map();
