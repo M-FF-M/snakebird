@@ -13,7 +13,8 @@ addition, there are some levels that were used during development - however, the
 an intellectual challenge. You may also create your own levels using the level editor.
 Currently, levels can only be saved in localStorage. An option to save levels on disk will
 be added in the near future. Visit [github.com/thejoshwolfe/snakefall](https://github.com/thejoshwolfe/snakefall)
-for more levels (a converter for their level format may follow in the future as well).
+for more levels (Snakefall levels can be loaded by clicking on 'Open' in the level editor
+and then pasting the Snakefall level link).
 
 ## Original vs. JS implementation
 
