@@ -71,7 +71,7 @@
   border-radius: 0.5em;
   box-shadow: 0em 0.2em 0em 0em rgba(55, 117, 161, 1);
   background-color: rgba(78, 141, 188, 1);
-  color: rgb(255, 255, 255, 1);
+  color: rgba(255, 255, 255, 1);
   text-shadow: 0em 0.1em 0em rgba(55, 117, 161, 1);
 }
 
@@ -132,7 +132,7 @@
   border-radius: 0.5em;
   box-shadow: 0em 0.2em 0em 0em rgba(55, 117, 161, 1);
   background-color: rgba(78, 141, 188, 1);
-  color: rgb(255, 255, 255, 1);
+  color: rgba(255, 255, 255, 1);
   text-shadow: 0em 0.1em 0em rgba(55, 117, 161, 1);
   margin-bottom: 2em;
 }

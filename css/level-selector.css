@@ -130,7 +130,7 @@ div.bordered-text, .lvl-menu-checkbox-label, .text-field-label {
   padding-right: 2em;
   padding-top: 0.2em;
   padding-bottom: 0.2em;
-  color: rgb(255, 255, 255, 1);
+  color: rgba(255, 255, 255, 1);
   text-shadow: 0em 0.1em 0em rgba(55, 117, 161, 1);
   text-align: center;
 }
@@ -207,7 +207,7 @@ input[type="button"] {
   border-radius: 0.5em;
   box-shadow: 0em 0.2em 0em 0em rgba(55, 117, 161, 1);
   background-color: rgba(78, 141, 188, 1);
-  color: rgb(255, 255, 255, 1);
+  color: rgba(255, 255, 255, 1);
   text-shadow: 0em 0.1em 0em rgba(55, 117, 161, 1);
   font-family: inherit;
   outline: none;
@@ -228,9 +228,9 @@ input[type="text"] {
   padding: 0.5em;
   border-radius: 0.5em;
   background-clip: border-box;
-  background-color: rgb(200, 228, 234, 1);
+  background-color: rgba(200, 228, 234, 1);
   box-shadow: 0em 0.2em 0em 0em rgba(55, 117, 161, 1);
-  color: rgb(0, 0, 0, 1);
+  color: rgba(0, 0, 0, 1);
   font-family: inherit;
   outline: none;
   border: 0.125em solid rgba(78, 141, 188, 0);
