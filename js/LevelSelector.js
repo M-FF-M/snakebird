@@ -6,6 +6,50 @@
 const LS_MIN_SIZE = [300, 200];
 
 /**
+ * This regular expression matches valid level objects (JSON or pure JS)
+ * @type {string}
+ */
+const LVL_OBJ_REGEX = '\\s*{\\s*"?name"?\\s*:\\s*("|\'|`)((?:\\\\\\1|(?:(?!\\1).))*)\\1\\s*(?:,\\s*"?fallThrough"?\\s*:\\s*(?:false|true)\\s*)?'
+  + '(?:,\\s*"?changeGravity"?\\s*:\\s*(?:false|true)\\s*)?(?:,\\s*"?options"?\\s*:\\s*{\\s*(?:\\s*"?allowMovingWithoutSpace"?\\s*:\\s*(?:false|true)\\s*)?'
+  + '(?:,?\\s*"?allowTailBiting"?\\s*:\\s*(?:false|true)\\s*)?}\\s*)?,\\s*"?board"?\\s*:\\s*("|\'|`)((?:\\\\\\3|(?:(?!\\3)(?:.|\\n|\\r)))*)\\3\\s*'
+  + '(?:,\\s*"?notFinished"?\\s*:\\s*(?:false|true)\\s*)?}\\s*';
+
+/**
+ * This regular expression matches valid level objects (JSON only)
+ * @type {string}
+ */
+const LVL_OBJ_REGEX_JSON = '\\s*{\\s*"name"\\s*:\\s*(")((?:\\\\\\1|(?:(?!\\1).))*)\\1\\s*(?:,\\s*"fallThrough"\\s*:\\s*(?:false|true)\\s*)?'
+  + '(?:,\\s*"changeGravity"\\s*:\\s*(?:false|true)\\s*)?(?:,\\s*"options"\\s*:\\s*{\\s*(?:\\s*"allowMovingWithoutSpace"\\s*:\\s*(?:false|true)\\s*)?'
+  + '(?:,?\\s*"allowTailBiting"\\s*:\\s*(?:false|true)\\s*)?}\\s*)?,\\s*"board"\\s*:\\s*(")((?:\\\\\\3|(?:(?!\\3)(?:.|\\n|\\r)))*)\\3\\s*'
+  + '(?:,\\s*"notFinished"\\s*:\\s*(?:false|true)\\s*)?}\\s*';
+
+/**
+ * This regular expression matches valid level boards
+ * @type {string}
+ */
+const BOARD_REGEX = '(?:[0-9]+ [0-9]+\\r?\\n)?[X$?@#|*.A-U<>v^a-u]+(?:\\r?\\n[X$?@#|*.A-U<>v^a-u]+)*(?:\\r?\\n[0-9]+ [0-9]+ (?:won|lost|not over)'
+  + '(?: [0-9]+ [0-9]+ [0-9]+ [0-9]+)?)?';
+
+/**
+ * Combine multiple regular expressions
+ * @param {any[][]} regexArr the regular expressions to combine.
+ * Each array entry should look like this [regex, quantifier] where regex is a regular expression
+ * and quantifier is something like *, ?, or a similar quantifier. Quantifier can also be the empty string.
+ * @return {string} the combined regular expression
+ */
+function combineRegex(regexArr) {
+  let ret = '^';
+  for (let i=0; i<regexArr.length; i++) {
+    ret += '(?:';
+    ret += regexArr[i][0];
+    ret += ')';
+    ret += regexArr[i][1];
+  }
+  ret += '$';
+  return ret;
+}
+
+/**
  * A collection of levels
  */
 class LevelCollection {
@@ -83,6 +127,29 @@ class LevelSelector {
     this._lvlEditor = null;
     this.resize();
     this.rebuildHTML();
+
+    const cLinkArr = location.href.split(/\?/g);
+    if (cLinkArr.length >= 2) {
+      const posLvl = decodeURIComponent(cLinkArr[1]);
+      window.history.pushState({}, 'Snakebird', cLinkArr[0]);
+      const objRegex = combineRegex([[LVL_OBJ_REGEX_JSON, '']]);
+      const boardRegex = combineRegex([[BOARD_REGEX, '']]);
+      if (posLvl.search(new RegExp(objRegex)) != -1) {
+        const lvlObj = JSON.parse(posLvl);
+        if (lvlObj.board.search(new RegExp(boardRegex)) != -1) {
+          if (lvlObj.notFinished) {
+            this._parentDiv.style.display = 'none';
+            if (this._lvlEditor != null) this._lvlEditor.shutDown();
+            this._lvlEditor = new LevelEditor(document.body, this, lvlObj.board, lvlObj.fallThrough ? true : false,
+              lvlObj.changeGravity ? true : false, lvlObj.options || {}, lvlObj.name);
+            this._lvlEditor.show();
+          } else {
+            this.openRawLevel(new GameState(lvlObj.board), lvlObj.fallThrough ? true : false,
+              lvlObj.changeGravity ? true : false, lvlObj.options || {}, lvlObj.name);
+          }
+        } else console.warn('Level link was detected but board description was invalid!');
+      }
+    }
   }
   
   /**

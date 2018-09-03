@@ -238,6 +238,10 @@ input[type="text"] {
   border: 0.125em solid rgba(78, 141, 188, 0);
 }
 
+input[type="text"].long {
+  min-width: 50%;
+}
+
 input[type="text"]:hover, input[type="text"]:focus {
   border: 0.125em solid rgba(78, 141, 188, 1);
 }

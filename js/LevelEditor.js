@@ -721,12 +721,43 @@ class LevelEditor {
     inp2.setAttribute('value', 'Save');
     inp2.addEventListener('click', () => this._completeSave());
     innerOverlay.appendChild(inp2);
+    
+    const lvlLinkH2 = document.createElement('h2');
+    lvlLinkH2.innerHTML = 'Share Level Link';
+    innerOverlay.appendChild(lvlLinkH2);
+    
+    this._shareLinkInp = document.createElement('input');
+    this._shareLinkInp.setAttribute('type', 'text');
+    this._shareLinkInp.setAttribute('id', 'level-share-link');
+    this._shareLinkInp.setAttribute('class', 'long');
+    this._shareLinkInp.setAttribute('readonly', 'readonly');
+    this._shareLinkInp.setAttribute('value', '');
+    this._shareLinkInp.addEventListener('click', () => this._shareLinkInp.select());
+    innerOverlay.appendChild(this._shareLinkInp);
+
+    this._updateLvlLink();
   }
 
   _updateLvlName(newName) {
     if (this._isShutDown) return;
     this._cLvlName = newName;
     this._nameHintDiv.innerHTML = this._getNameHint();
+    this._updateLvlLink();
+  }
+
+  _updateLvlLink() {
+    let baseLink = /^([^#?]*)/.exec(location.href)[1];
+    if (baseLink.search(/^file:\/\/\//) != -1) baseLink = 'https://m-ff-m.github.io/snakebird/';
+    const lvlObj = {
+      name: this._cLvlName,
+      fallThrough: this._fallThrough,
+      changeGravity: this._changeGravity,
+      options: this._options,
+      board: this._getStateString(true),
+      notFinished:  this._isNotFinished
+    };
+    const link = `${baseLink}?${encodeURIComponent(JSON.stringify(lvlObj))}`;
+    this._shareLinkInp.setAttribute('value', link);
   }
 
   _getNameHint() {
@@ -848,6 +879,7 @@ class LevelEditor {
     const lnkInp = document.createElement('input');
     lnkInp.setAttribute('type', 'text');
     lnkInp.addEventListener('input', () => this._checkSnakefallLink(lnkInp.value));
+    lnkInp.setAttribute('class', 'long');
     innerOverlay.appendChild(lnkInp);
 
     this._linkHintDiv = document.createElement('div');
