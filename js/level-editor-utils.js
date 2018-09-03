@@ -223,3 +223,446 @@ function decompressSerialization(string) {
   }
   return result;
 }
+
+/**
+ * A class for saving files on the user's disk
+ */
+class MFFileSaver {
+  /**
+   * Create a new MFFileSaver
+   */
+  constructor() {
+    /**
+     * The URL to the most recent saved file
+     * @type {string}
+     */
+    this.fileURL = null;
+  }
+  
+  /**
+   * Get a link to a file
+   * @param {string} content the file content
+   * @param {string} filename the file name
+   * @return {HTMLElement} a link element pointing to the file
+   */
+  getFileLink(content, filename) {
+    const data = new Blob([content], { type: 'application/octet-stream', endings: 'native' });
+    if (this.fileURL !== null) window.URL.revokeObjectURL(this.fileURL);
+    this.fileURL = window.URL.createObjectURL(data);
+    const linkElem = document.createElement('a');
+    linkElem.setAttribute('href', this.fileURL);
+    linkElem.setAttribute('download', filename);
+    return linkElem;
+  }
+
+  /**
+   * Save a file on the user's disk
+   * @param {string} content the file content
+   * @param {string} filename the file name
+   */
+  saveFile(content, filename) {
+    const linkElem = this.getFileLink(content, filename);
+    document.body.appendChild(linkElem);
+    linkElem.click();
+    document.body.removeChild(linkElem);
+  }
+}
+
+/**
+ * A class for reading files from the user's disk
+ */
+class MFFileReader {
+  /**
+   * Create a new MFFileReader
+   */
+  constructor() {
+    /**
+     * Callback that will be called when a file was loaded
+     * @type {Function}
+     */
+    this.onload = () => {};
+    /**
+     * Callbacks that will be called when a file was loaded
+     * @type {Function[]}
+     */
+    this.callOnLoad = [];
+  }
+ 
+  /**
+   * Add an event listener
+   * @param {string} type the type of the event listener.
+   * Currently, only 'load' is supported. The listener will be called with an event object of
+   * the following format: { message, description, name, filename, extension, content }
+   * @param {Function} callF the callback to call when the event occurs
+   */
+  addEventListener(type, callF) {
+    if (type == 'load')
+      this.callOnLoad.push(callF);
+  }
+ 
+  /**
+   * Add a file input whose files should be loaded
+   * @param {HTMLElement} domElem the file input
+   * @param {boolean} [readAsDataUrl] whether to read the file as a URL (useful for images)
+   */
+  addInput(domElem, readAsDataUrl = false) {
+    let changeF;
+    if (readAsDataUrl) {
+      changeF = () => this.readFileUrl(domElem.files[0]);
+    } else {
+      changeF = () => this.readFile(domElem.files[0]);
+    }
+    domElem.addEventListener('change', changeF);
+  }
+ 
+  /**
+   * Read the given file
+   * @param {File} file the file to read
+   */
+  readFile(file) {
+    if (typeof file === 'object') {
+      const fReader = new FileReader();
+      fReader.onload = () => this.openedFileLoaded(fReader.result, file.name);
+      fReader.readAsText(file);
+    }
+  }
+ 
+  /**
+   * Read the given file as URL
+   * @param {File} file the file to read
+   */
+  readFileUrl(file) {
+    if (typeof file === 'object') {
+      const fReader = new FileReader();
+      fReader.onload = () => this.openedFileLoaded(fReader.result, file.name);
+      fReader.readAsDataURL(file);
+    }
+  }
+ 
+  /**
+   * Should be called when the file content was loaded
+   * @param {string} content the contents of the loaded file
+   * @param {string} fname the file name
+   */
+  openedFileLoaded(content, fname) {
+    const eventObj = {};
+    eventObj.description = 'file has been read';
+    eventObj.message = 'file has been read';
+    eventObj.name = fname;
+    const fileNameSplit = /^([^.]+)(?:(.*)\.([^.]+))?$/.exec(fname);
+    eventObj.extension = fileNameSplit[3];
+    if ((typeof eventObj.extension === 'string') && (eventObj.extension.length > 0))
+      eventObj.extension = eventObj.extension.toLowerCase();
+    else
+      eventObj.extension = '';
+    eventObj.filename = fileNameSplit[1];
+    if (typeof fileNameSplit[2] === 'string') eventObj.filename += fileNameSplit[2];
+    eventObj.content = content;
+    this.onload(eventObj);
+    for (let i=0; i<this.callOnLoad.length; i++)
+      this.callOnLoad[i](eventObj);
+  }
+}
+
+/**
+ * Escape a string to be used as HTML source code
+ * @param {string} txt_in the string to escape
+ * @return {string} the escaped string
+ */
+function MFhtmlescape(txt_in) {
+  txt_in = txt_in.replace(new RegExp(/&/g), '&amp;');
+  txt_in = txt_in.replace(new RegExp(/</g), '&lt;');
+  txt_in = txt_in.replace(new RegExp(/>/g), '&gt;');
+  txt_in = txt_in.replace(new RegExp(/"/g), '&quot;');
+  txt_in = txt_in.replace(new RegExp(/ /g), '&nbsp;');
+  txt_in = txt_in.replace(new RegExp(/\t/g), '&nbsp;&nbsp;&nbsp;&nbsp;');
+  txt_in = txt_in.replace(new RegExp(/\r\n/g), '<br />');
+  txt_in = txt_in.replace(new RegExp(/\n/g), '<br />');
+  return txt_in;
+}
+
+
+/**
+ * A class for simplifying drag and drop file selection
+ */
+class MFDragDrop {
+  /**
+   * Create a new MFDragDrop object
+   * @param {HTMLElement} domElem the drag and drop target
+   * @param {boolean} [readAsDataUrl] whether to read the file as a URL (useful for images)
+   */
+  constructor(domElem, readAsDataUrl = false) {
+    /**
+     * The drag and drop target
+     * @type {HTMLElement}
+     */
+    this.domElem = domElem;
+    /**
+     * The inner div
+     * @type {HTMLElement}
+     */
+    this.innerDiv = document.createElement('div');
+    this.innerDiv.innerHTML = 'Drop files here';
+    this.domElem.appendChild(this.innerDiv);
+    this.innerDiv.addEventListener('drop', event => this.drop(event));
+    this.innerDiv.addEventListener('dragover', event => this.dragOver(event));
+    this.innerDiv.addEventListener('dragenter', event => this.dragEnter(event));
+    this.innerDiv.addEventListener('dragleave', event => this.dragLeave(event));
+    /**
+     * Reads a given file
+     * @type {Function}
+     */
+    this.readFile = () => {};
+    if (readAsDataUrl)
+      this.readFile = file => this.readFileAsDataUrl(file);
+    else
+      this.readFile = file => this.readFileAsText(file);
+    /**
+     * The file reade
+     * @type {MFFileReader}
+     */
+    this.fReader = new MFFileReader();
+    this.fReader.addEventListener('load', event => this.fileLoaded(event));
+    /**
+     * Callback that will be called when a file was loaded
+     * @type {Function}
+     */
+    this.onload = () => {};
+    /**
+     * Callbacks that will be called when a file was loaded
+     * @type {Function[]}
+     */
+    this.callOnLoad = [];
+  }
+ 
+  /**
+   * Add an event listener
+   * @param {string} type the type of the event listener.
+   * Currently, only 'load' is supported. The listener will be called with an event object of
+   * the following format: { message, description, name, filename, extension, content }
+   * @param {Function} callF the callback to call when the event occurs
+   */
+  addEventListener(type, callF) {
+    if (type == 'load')
+      this.callOnLoad.push(callF);
+  }
+ 
+  /**
+   * Should be called when a drop event occurred
+   * @param {object} event the event object
+   */
+  drop(event) {
+    event.preventDefault();
+    this.dragLeave( {} );
+    if (event.dataTransfer.files.length > 0)
+      this.readFile(event.dataTransfer.files[0]);
+    this._removeHover();
+  }
+ 
+  /**
+   * Read file as plain text
+   * @param {File} file the file to read
+   */
+  readFileAsText(file) {
+    this.fReader.readFile(file);
+  }
+ 
+  /**
+   * Read file as data URL
+   * @param {File} file the file to read
+   */
+  readFileAsDataUrl(file) {
+    this.fReader.readFileUrl(file);
+  }
+ 
+  /**
+   * Should be called when a file was loaded
+   * @param {object} event the event object
+   */
+  fileLoaded(event) {
+    this.onload(event);
+    for (let i=0; i<this.callOnLoad.length; i++)
+      this.callOnLoad[i](event);
+  }
+
+  /**
+   * Should be called when a drag over event occurred
+   * @param {object} event the event object
+   */
+  dragOver(event) {
+    event.preventDefault();
+  }
+ 
+  /**
+   * Should be called when a drag enter event occurred
+   * @param {object} event the event object
+   */
+  dragEnter(event) {
+    this._addHover();
+  }
+ 
+  /**
+   * Should be called when a drag leave event occurred
+   * @param {object} event the event object
+   */
+  dragLeave(event) {
+    this._removeHover();
+  }
+
+  _addHover() {
+    let classVar = this.domElem.getAttribute('class');
+    if (typeof classVar !== 'string') classVar = '';
+    if (classVar.search(new RegExp(/mf-drag-drop-hover/)) == -1) {
+      if (classVar == '') classVar = 'mf-drag-drop-hover';
+      else classVar += ' mf-drag-drop-hover';
+      this.domElem.setAttribute('class', classVar);
+    }
+  }
+
+  _removeHover() {
+    let classVar = this.domElem.getAttribute('class');
+    if (typeof classVar !== 'string') classVar = '';
+    if (classVar.search(new RegExp(/mf-drag-drop-hover/)) != -1) {
+      classVar = classVar.replace(new RegExp(/(?:^| )mf-drag-drop-hover(?= |$)/), '');
+      this.domElem.setAttribute('class', classVar);
+    }
+  }
+}
+
+/**
+ * Another class for simplifying drag and drop file selection
+ */
+class MFFileSelector {
+  /**
+   * Create a new MFFileSelector object
+   * @param {HTMLElement} parentElem the parent element of the drag and drop target
+   * @param {boolean} [readAsDataUrl] whether to read the file as a URL (useful for images)
+   */
+  constructor(parentElem, readAsDataUrl = false) {
+    /**
+     * The parent element
+     * @type {HTMLElement}
+     */
+    this.parentElem = parentElem;
+    /**
+     * The current file name
+     * @type {string}
+     */
+    this.cFileName = '';
+    /**
+     * The current file content
+     * @type {string}
+     */
+    this.cFileContent = '';
+    /**
+     * A random ID
+     * @type {number}
+     */
+    this.randVar = Math.round(Math.random()*10000);
+    /**
+     * The main container
+     * @type {HTMLElement}
+     */
+    this.overallContainer = document.createElement('div');
+    this.overallContainer.setAttribute('class', 'mf-file-selector-container');
+    /**
+     * The inner container
+     * @type {HTMLElement}
+     */
+    this.container = document.createElement('div');
+    this.container.setAttribute('class', 'mf-file-selector');
+    /**
+     * The head container
+     * @type {HTMLElement}
+     */
+    this.head = document.createElement('div');
+    this.head.setAttribute('class', 'mf-file-selector-head');
+    this.head.innerHTML = 'Select a file';
+    /**
+     * The drag and drop target
+     * @type {HTMLElement}
+     */
+    this.ddTarget = document.createElement('div');
+    this.ddTarget.setAttribute('class', 'mf-drag-drop');
+    /**
+     * The file input
+     * @type {HTMLElement}
+     */
+    this.fUpload = document.createElement('input');
+    this.fUpload.setAttribute('type', 'file');
+    this.fUpload.setAttribute('id', `mf-file-selector-${this.randVar}`);
+    this.fUpload.style.display = 'none';
+    /**
+     * The file input label
+     * @type {HTMLElement}
+     */
+    this.fUploadLabel = document.createElement('label');
+    this.fUploadLabel.setAttribute('for', `mf-file-selector-${this.randVar}`);
+    this.fUploadLabel.innerHTML = 'Browse&hellip;';
+    /**
+     * The file name span
+     * @type {HTMLElement}
+     */
+    this.fileNameSpan = document.createElement('span');
+    this.fileNameSpan.innerHTML = 'No file selected';
+    this.container.appendChild(this.ddTarget);
+    this.container.appendChild(this.fUpload);
+    this.container.appendChild(this.fUploadLabel);
+    this.container.appendChild(this.fileNameSpan);
+    this.overallContainer.appendChild(this.head);
+    this.overallContainer.appendChild(this.container);
+    this.parentElem.appendChild(this.overallContainer);
+    /**
+     * The drag and drop object
+     * @type {MFDragDrop}
+     */
+    this.ddObj = new MFDragDrop(this.ddTarget, readAsDataUrl);
+    this.ddObj.addEventListener('load', event => this.fileLoaded(event));
+    /**
+     * The file reader
+     * @type {MFFileReader}
+     */
+    this.fReader = new MFFileReader();
+    this.fReader.addEventListener('load', event => this.fileLoaded(event));
+    this.fReader.addInput(this.fUpload, readAsDataUrl);
+    /**
+     * Callback that will be called when a file was loaded
+     * @type {Function}
+     */
+    this.onload = () => {};
+    /**
+     * Callbacks that will be called when a file was loaded
+     * @type {Function[]}
+     */
+    this.callOnLoad = [];
+  }
+ 
+  /**
+   * Add an event listener
+   * @param {string} type the type of the event listener.
+   * Currently, only 'load' is supported. The listener will be called with an event object of
+   * the following format: { message, description, name, filename, extension, content }
+   * @param {Function} callF the callback to call when the event occurs
+   */
+  addEventListener(type, callF) {
+    if (type == 'load')
+      this.callOnLoad.push(callF);
+  }
+ 
+  /**
+   * Should be called when a file was loaded
+   * @param {object} event the event object
+   */
+  fileLoaded(event) {
+    if ((typeof event.content === 'string') && (event.content.length > 0)) {
+      if ((typeof event.name === 'string') && (event.name.length > 0))
+        { this.cFileName = event.name; this.fileNameSpan.innerHTML = 'File: ' + MFhtmlescape(this.cFileName); }
+      else
+        { this.cFileName = ''; this.fileNameSpan.innerHTML = 'File selected'; }
+      this.cFileContent = event.content;
+    }
+    this.onload(event);
+    for (let i=0; i<this.callOnLoad.length; i++)
+      this.callOnLoad[i](event);
+  }
+}

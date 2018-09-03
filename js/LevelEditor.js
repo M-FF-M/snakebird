@@ -735,6 +735,36 @@ class LevelEditor {
     this._shareLinkInp.addEventListener('click', () => this._shareLinkInp.select());
     innerOverlay.appendChild(this._shareLinkInp);
 
+    const dskH2 = document.createElement('h2');
+    dskH2.innerHTML = 'Save on Disk';
+    innerOverlay.appendChild(dskH2);
+
+    this._saveAsJS = false;
+    const checkbox = document.createElement('input');
+    checkbox.setAttribute('type', 'checkbox');
+    checkbox.setAttribute('id', 'lvl-edit-checkbox-pure-js');
+    checkbox.setAttribute('value', 'Save pure JS (no JSON)');
+    checkbox.setAttribute('class', 'lvl-menu-checkbox');
+    checkbox.addEventListener('change', () => this._saveAsJS = checkbox.checked);
+    innerOverlay.appendChild(checkbox);
+    const checkboxLabel = document.createElement('label');
+    checkboxLabel.setAttribute('for', 'lvl-edit-checkbox-pure-js');
+    checkboxLabel.setAttribute('class', 'lvl-menu-checkbox-label');
+    checkboxLabel.innerHTML = 'Save pure JS (no JSON)';
+    innerOverlay.appendChild(checkboxLabel);
+    
+    const partSaveInp = document.createElement('input');
+    partSaveInp.setAttribute('type', 'button');
+    partSaveInp.setAttribute('value', 'Save current level');
+    partSaveInp.addEventListener('click', () => this._saveCurrent());
+    innerOverlay.appendChild(partSaveInp);
+
+    const fullSaveInp = document.createElement('input');
+    fullSaveInp.setAttribute('type', 'button');
+    fullSaveInp.setAttribute('value', 'Save copy of local storage');
+    fullSaveInp.addEventListener('click', () => this._saveLocalStorage());
+    innerOverlay.appendChild(fullSaveInp);
+
     this._updateLvlLink();
   }
 
@@ -765,6 +795,58 @@ class LevelEditor {
     if (this._cLvlName == '') return 'Name must not be empty!';
     if (this._levelNames[this._cLvlName]) return 'Name has already been used. The existing level will be overwritten when you press save.';
     return 'Name hasn\'t been used yet.';
+  }
+
+  _getLvlString(lvlObj) {
+    if (this._saveAsJS) {
+      let ret = '{';
+      ret += `\n  name: ${JSON.stringify(lvlObj.name)}`;
+      if (lvlObj.fallThrough) ret += ',\n  fallThrough: true';
+      if (lvlObj.changeGravity) ret += ',\n  changeGravity: true';
+      if (lvlObj.options && (lvlObj.options.allowMovingWithoutSpace || lvlObj.options.allowTailBiting)) {
+        ret += ',\n  options: {';
+        if (lvlObj.options.allowMovingWithoutSpace) {
+          ret += ' allowMovingWithoutSpace: true';
+          if (lvlObj.options.allowTailBiting) ret += ',';
+          else ret += ' ';
+        }
+        if (lvlObj.options.allowTailBiting) ret += ' allowTailBiting: true ';
+        ret += '}';
+      }
+      ret += `,\n  board: \`${lvlObj.board}\``;
+      if (lvlObj.notFinished) ret += ',\n  notFinished: true';
+      ret += '\n}';
+      return ret;
+    } else return JSON.stringify(lvlObj);
+  }
+
+  _saveCurrent() {
+    let saveStr = this._getLvlString({
+      name: this._cLvlName,
+      fallThrough: this._fallThrough,
+      changeGravity: this._changeGravity,
+      options: this._options,
+      board: this._getStateString(true),
+      notFinished:  this._isNotFinished
+    });
+    if (this._saveAsJS) saveStr = `const myLevel = ${saveStr};`;
+    const fs = new MFFileSaver();
+    fs.saveFile(saveStr, `myLevel.js${ this._saveAsJS ? '' : 'on' }`);
+  }
+
+  _saveLocalStorage() {
+    this._myLevels = STORAGE.get('myLevels');
+    let saveStr = '';
+    if (this._saveAsJS) {
+      saveStr = 'const myLevels = [\n';
+      for (let i=0; i<this._myLevels.length; i++) {
+        if (i > 0) saveStr += ',\n\n';
+        saveStr += this._getLvlString(this._myLevels[i]);
+      }
+      saveStr += '\n];';
+    } else saveStr = JSON.stringify(this._myLevels);
+    const fs = new MFFileSaver();
+    fs.saveFile(saveStr, `myLevels.js${ this._saveAsJS ? '' : 'on' }`);
   }
 
   _completeSave() {
@@ -846,7 +928,7 @@ class LevelEditor {
         const { allowMovingWithoutSpace = false, allowTailBiting = false } = options;
         for (let i=0; i<5; i++) {
           const ctd = document.createElement('td');
-          if (i == 0) ctd.innerHTML = this._myLevels[k].name;
+          if (i == 0) ctd.innerHTML = MFhtmlescape(this._myLevels[k].name);
           else {
             if (i == 1 && !opt1 && !opt2 && !opt3 && !opt4) {
               ctd.setAttribute('colspan', '4');
@@ -893,13 +975,218 @@ class LevelEditor {
     inp2.addEventListener('click', () => this._loadSnakefallLevel());
     innerOverlay.appendChild(inp2);
 
+    this._checkSnakefallLink('');
+
+    const dskH = document.createElement('h2');
+    dskH.innerHTML = 'Open from Disk';
+    innerOverlay.appendChild(dskH);
+    this._openFileSelector = new MFFileSelector(innerOverlay);
+    this._openFileSelector.addEventListener('load', obj => this._openFileLoaded(obj));
+
+    this._cOpenedLevels = [];
+    this._fileHintDiv = document.createElement('div');
+    this._fileHintDiv.setAttribute('class', 'bordered-text');
+    this._fileHintDiv.innerHTML = '';
+    this._fileHintDiv.style.display = 'none';
+    this._fileHintDiv.style.marginTop = '1em';
+    innerOverlay.appendChild(this._fileHintDiv);
+
+    this._fileLoadSubmit = document.createElement('input');
+    this._fileLoadSubmit.setAttribute('type', 'button');
+    this._fileLoadSubmit.setAttribute('value', 'Load Level(s)');
+    this._fileLoadSubmit.addEventListener('click', () => this._completeFileLoad());
+    innerOverlay.appendChild(this._fileLoadSubmit);
+
     const inp3 = document.createElement('input');
     inp3.setAttribute('type', 'button');
     inp3.setAttribute('value', 'Cancel');
     inp3.addEventListener('click', () => this._hideOverlay());
     innerOverlay.appendChild(inp3);
+  }
 
-    this._checkSnakefallLink('');
+  _completeFileLoad() {
+    if (this._cOpenedLevels.length > 0) {
+      this._hideOverlay();
+      this._myLevels = STORAGE.get('myLevels');
+      this._levelNamesArr = [];
+      this._levelNames = {};
+      for (let i=0; i<this._myLevels.length; i++) {
+        this._levelNames[this._myLevels[i].name] = true;
+        this._levelNamesArr.push(this._myLevels[i].name);
+      }
+      const innerOverlay = this._showOverlay('Open Level', 'Click on a level below to load it. The following levels have been loaded from the file:');
+  
+      const table = document.createElement('table');
+      table.setAttribute('class', 'lvl-sel-collection');
+      const hTR = document.createElement('tr');
+      hTR.innerHTML = '<th></th><th>Level</th><th colspan="4">Peculiarities</th>';
+      table.appendChild(hTR);
+      for (let k=0; k<this._cOpenedLevels.length; k++) {
+        const tr = document.createElement('tr');
+        const opt1 = this._cOpenedLevels[k].fallThrough;
+        const opt2 = this._cOpenedLevels[k].changeGravity;
+        const opt3 = this._cOpenedLevels[k].options && this._cOpenedLevels[k].options.allowMovingWithoutSpace;
+        const opt4 = this._cOpenedLevels[k].options && this._cOpenedLevels[k].options.allowTailBiting;
+        const duplTD = document.createElement('td');
+        duplTD.setAttribute('class', 'icon-td');
+        duplTD.innerHTML = this._levelNames[this._cOpenedLevels[k].name] ?
+          '<img title="Duplicate name" class="info-icon" src="css/duplicate.svg"/>' : '';
+        tr.appendChild(duplTD);
+        const { name = '', board, fallThrough = false, changeGravity = false, options = {} } = this._cOpenedLevels[k];
+        const { allowMovingWithoutSpace = false, allowTailBiting = false } = options;
+        for (let i=0; i<5; i++) {
+          const ctd = document.createElement('td');
+          if (i == 0) ctd.innerHTML = MFhtmlescape(this._cOpenedLevels[k].name);
+          else {
+            if (i == 1 && !opt1 && !opt2 && !opt3 && !opt4) {
+              ctd.setAttribute('colspan', '4');
+              ctd.innerHTML = 'none';
+              tr.appendChild(ctd);
+              break;
+            }
+            ctd.setAttribute('class', 'icon-td');
+            let iHTML = '';
+            if (i == 1 && opt1) iHTML = '<img title="Wrap-Around" class="info-icon" src="css/fall-through.svg"/>';
+            else if (i == 2 && opt2) iHTML = '<img title="Gravity Change" class="info-icon" src="css/gravity.svg"/>';
+            else if (i == 3 && opt3) iHTML = '<img title="No Space Movement" class="info-icon" src="css/no-space.svg"/>';
+            else if (i == 4 && opt4) iHTML = '<img title="Tail Biting" class="info-icon" src="css/tail-biting.svg"/>';
+            ctd.innerHTML = iHTML;
+          }
+          tr.appendChild(ctd);
+        }
+        table.appendChild(tr);
+        tr.addEventListener('click', () =>
+          this._completeOpen(name, board, fallThrough, changeGravity, { allowMovingWithoutSpace, allowTailBiting }));
+      }
+      innerOverlay.appendChild(table);
+
+      const inp1 = document.createElement('input');
+      inp1.setAttribute('type', 'button');
+      inp1.setAttribute('value', 'Cancel');
+      inp1.addEventListener('click', () => this._hideOverlay());
+      innerOverlay.appendChild(inp1);
+
+      const inp2 = document.createElement('input');
+      inp2.setAttribute('type', 'button');
+      inp2.setAttribute('value', 'Save to Local Storage (Overwrite Duplicates)');
+      inp2.addEventListener('click', () => this._saveOpenedOverwrite());
+      innerOverlay.appendChild(inp2);
+
+      const inp3 = document.createElement('input');
+      inp3.setAttribute('type', 'button');
+      inp3.setAttribute('value', 'Save to Local Storage (Skip Duplicates)');
+      inp3.addEventListener('click', () => this._saveOpenedSkip());
+      innerOverlay.appendChild(inp3);
+    }
+  }
+
+  _saveOpenedOverwrite() {
+    this._hideOverlay();
+    for (let k=0; k<this._cOpenedLevels.length; k++) {
+      let idx = this._myLevels.length;
+      for (let i=0; i<this._myLevels.length; i++) {
+        if (this._myLevels[i].name == this._cOpenedLevels[k].name) {
+          idx = i;
+          break;
+        }
+      }
+      this._myLevels[idx] = this._cOpenedLevels[k];
+    }
+    STORAGE.set('myLevels', this._myLevels);
+    this._levelSel.rebuildHTML();
+  }
+
+  _saveOpenedSkip() {
+    this._hideOverlay();
+    for (let k=0; k<this._cOpenedLevels.length; k++) {
+      if (!this._levelNames[this._cOpenedLevels[k].name])
+        this._myLevels.push(this._cOpenedLevels[k]);
+    }
+    STORAGE.set('myLevels', this._myLevels);
+    this._levelSel.rebuildHTML();
+  }
+
+  _openFileLoaded(obj) {
+    this._fileHintDiv.style.display = 'block';
+    let cont = obj.content;
+    let hintStr = '';
+    this._cOpenedLevels = [];
+    const boardRegex = combineRegex([[BOARD_REGEX, '']]);
+    try {
+      if (cont.search(new RegExp(SINGLE_LEVEL_MATCH)) != -1) {
+        hintStr = 'This file contains a single level.';
+        let lvlVar = null;
+        if (cont.search(new RegExp(`^${LVL_VAR_REGEX}`)) != -1) {
+          if (cont.search(new RegExp(SINGLE_LEVEL_MATCH_JS)) != -1) {
+            cont = cont.replace(/^\s*(?:let|const|var)\s+([a-zA-Z_$][0-9a-zA-Z_$]*)\s*=/, 'lvlVar =');
+            eval(cont);
+          } else {
+            hintStr += ' Pure JS format was detected. However, the file contents were invalid.';
+          }
+        } else {
+          if (cont.search(new RegExp(SINGLE_LEVEL_MATCH_JSON)) != -1) {
+            lvlVar = JSON.parse(cont);
+          } else {
+            hintStr += ' JSON format was detected. However, the file contents were invalid.';
+          }
+        }
+        if (lvlVar && (typeof lvlVar === 'object')) {
+          if (lvlVar.board.search(new RegExp(boardRegex)) != -1) {
+            if (lvlVar.name == '') lvlVar.name = 'Unnamed';
+            this._cOpenedLevels.push(lvlVar);
+            hintStr += ' It seems to be valid.';
+          } else {
+            hintStr += ' However, the board description is invalid.';
+          }
+        }
+      } else if (cont.search(new RegExp(MULTI_LEVEL_MATCH)) != -1) {
+        hintStr = 'This file contains multiple levels.';
+        let lvlVar = null;
+        if (cont.search(new RegExp(`^${LVL_VAR_REGEX}`)) != -1) {
+          if (cont.search(new RegExp(MULTI_LEVEL_MATCH_JS)) != -1) {
+            cont = cont.replace(/^\s*(?:let|const|var)\s+([a-zA-Z_$][0-9a-zA-Z_$]*)\s*=/, 'lvlVar =');
+            eval(cont);
+          } else {
+            hintStr += ' Pure JS format was detected. However, the file contents were invalid.';
+          }
+        } else {
+          if (cont.search(new RegExp(MULTI_LEVEL_MATCH_JSON)) != -1) {
+            lvlVar = JSON.parse(cont);
+          } else {
+            hintStr += ' JSON format was detected. However, the file contents were invalid.';
+          }
+        }
+        if (lvlVar && (typeof lvlVar === 'object') && (lvlVar instanceof Array)) {
+          let correctLvls = 0; let incorrectLvls = 0;
+          for (let i=0; i<lvlVar.length; i++) {
+            if (typeof lvlVar[i] === 'object') {
+              if (lvlVar[i].board.search(new RegExp(boardRegex)) != -1) {
+                if (lvlVar[i].name == '') lvlVar[i].name = 'Unnamed';
+                this._cOpenedLevels.push(lvlVar[i]);
+                correctLvls++;
+              } else incorrectLvls++;
+            } else incorrectLvls++;
+          }
+          if (correctLvls == 0 && incorrectLvls == 0) {
+            hintStr = 'This file contains 0 levels.';
+          } else if (correctLvls > 0 && incorrectLvls == 0) {
+            hintStr += ` It seems to contain ${correctLvls} valid level(s).`;
+          } else if (correctLvls == 0 && incorrectLvls > 0) {
+            hintStr += ` It seems to contain ${incorrectLvls} level(s) with invalid board descriptions.`;
+          } else {
+            hintStr += ` It seems to contain ${correctLvls} valid level(s) and ${incorrectLvls} level(s) with invalid board descriptions.`;
+          }
+        }
+      } else {
+        hintStr = 'This is not a valid level file.';
+      }
+    } catch (exc) {
+      if (hintStr != '') hintStr += ' ';
+      hintStr += 'File parsing failed.';
+      console.warn('Caught exception while trying to parse file from disk!');
+      console.log(exc);
+    }
+    this._fileHintDiv.innerHTML = hintStr;
   }
 
   _checkSnakefallLink(val) {

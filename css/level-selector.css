@@ -47,7 +47,7 @@ div.bordered-text {
   color: rgba(255, 255, 255, 1);
 }
 
-div.bordered-text, .lvl-menu-checkbox-label, .text-field-label {
+div.bordered-text, .lvl-menu-checkbox-label, .text-field-label, .mf-file-selector span, .mf-file-selector-head {
   text-shadow:
      -0.1em     0em 0em rgba(55, 117, 161, 1),  
       0.1em     0em 0em rgba(55, 117, 161, 1),

@@ -1,0 +1,63 @@
+
+.mf-file-selector-container {
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.mf-file-selector-head {
+  text-align: center;
+  color: rgba(255, 255, 255, 1);
+}
+
+.mf-file-selector {
+  
+}
+
+.mf-drag-drop {
+  border-radius: 1em;
+  box-shadow: 0em 0.2em 0em 0em rgba(55, 117, 161, 1);
+  background-color: rgba(78, 141, 188, 1);
+  color: rgba(255, 255, 255, 1);
+  text-shadow: 0em 0.1em 0em rgba(55, 117, 161, 1);
+  padding: 0.25em;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+.mf-drag-drop div {
+  min-width: 20em;
+  text-align: center;
+  padding-top: 2.5em;
+  padding-bottom: 2.5em;
+  border-radius: 1em;
+  padding-left: 0.5em;
+  padding-right: 0.5em;
+  border: 0.25em dashed rgba(55, 117, 161, 0);
+}
+
+.mf-drag-drop.mf-drag-drop-hover div {
+  border: 0.25em dashed rgba(55, 117, 161, 1);
+}
+
+.mf-file-selector span {
+  color: rgba(255, 255, 255, 1);
+}
+
+.mf-file-selector label {
+  display: inline-block;
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
+  padding-left: 2em;
+  padding-right: 2em;
+  border-radius: 0.5em;
+  box-shadow: 0em 0.2em 0em 0em rgba(55, 117, 161, 1);
+  background-color: rgba(78, 141, 188, 1);
+  color: rgba(255, 255, 255, 1);
+  text-shadow: 0em 0.1em 0em rgba(55, 117, 161, 1);
+  margin-right: 0.5em;
+}
+
+.mf-file-selector label:hover, .mf-file-selector label:focus {
+  background-color: rgba(78, 168, 188, 1);
+}

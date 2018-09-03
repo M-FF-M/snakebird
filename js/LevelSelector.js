@@ -6,6 +6,12 @@
 const LS_MIN_SIZE = [300, 200];
 
 /**
+ * This regular expression matches valid variable assignments
+ * @type {string}
+ */
+const LVL_VAR_REGEX = '\\s*(?:let|const|var)\\s+([a-zA-Z_$][0-9a-zA-Z_$]*)\\s*=\\s*';
+
+/**
  * This regular expression matches valid level objects (JSON or pure JS)
  * @type {string}
  */
@@ -24,6 +30,15 @@ const LVL_OBJ_REGEX_JSON = '\\s*{\\s*"name"\\s*:\\s*(")((?:\\\\\\1|(?:(?!\\1).))
   + '(?:,\\s*"notFinished"\\s*:\\s*(?:false|true)\\s*)?}\\s*';
 
 /**
+ * This regular expression matches valid level objects (JS only)
+ * @type {string}
+ */
+const LVL_OBJ_REGEX_JS = '\\s*{\\s*name\\s*:\\s*("|\'|`)((?:\\\\\\1|(?:(?!\\1).))*)\\1\\s*(?:,\\s*fallThrough\\s*:\\s*(?:false|true)\\s*)?'
+  + '(?:,\\s*changeGravity\\s*:\\s*(?:false|true)\\s*)?(?:,\\s*options\\s*:\\s*{\\s*(?:\\s*allowMovingWithoutSpace\\s*:\\s*(?:false|true)\\s*)?'
+  + '(?:,?\\s*allowTailBiting\\s*:\\s*(?:false|true)\\s*)?}\\s*)?,\\s*board\\s*:\\s*("|\'|`)((?:\\\\\\3|(?:(?!\\3)(?:.|\\n|\\r)))*)\\3\\s*'
+  + '(?:,\\s*notFinished\\s*:\\s*(?:false|true)\\s*)?}\\s*';
+
+/**
  * This regular expression matches valid level boards
  * @type {string}
  */
@@ -33,21 +48,73 @@ const BOARD_REGEX = '(?:[0-9]+ [0-9]+\\r?\\n)?[X$?@#|*.A-U<>v^a-u]+(?:\\r?\\n[X$
 /**
  * Combine multiple regular expressions
  * @param {any[][]} regexArr the regular expressions to combine.
- * Each array entry should look like this [regex, quantifier] where regex is a regular expression
+ * Each array entry should look like this [regex, quantifier, captnum] where regex is a regular expression
  * and quantifier is something like *, ?, or a similar quantifier. Quantifier can also be the empty string.
+ * captnum specifies the number of capturing groups in this specific regular expression
  * @return {string} the combined regular expression
  */
 function combineRegex(regexArr) {
   let ret = '^';
+  let cCaptNum = 0;
   for (let i=0; i<regexArr.length; i++) {
+    let [reg, quan = '', captnum = 0] = regexArr[i];
+    if (cCaptNum > 0) {
+      const reg2 = /\\[0-9]+/g;
+      let res;
+      const places = [];
+      while((res = reg2.exec(reg)) !== null)
+        places.push([res.index, res[0].length, parseInt(res[0].substr(1))]);
+      for (let k=places.length-1; k>=0; k--)
+        reg = `${reg.substring(0, places[k][0])}\\${(places[k][2] + cCaptNum)}${reg.substring(places[k][0] + places[k][1], reg.length)}`;
+    }
     ret += '(?:';
-    ret += regexArr[i][0];
+    ret += reg;
     ret += ')';
-    ret += regexArr[i][1];
+    ret += quan;
+    cCaptNum += captnum;
   }
   ret += '$';
   return ret;
 }
+
+/**
+ * This regular expression matches valid single level files
+ * @type {string}
+ */
+const SINGLE_LEVEL_MATCH = combineRegex([[LVL_VAR_REGEX, '?', 1], [LVL_OBJ_REGEX, '', 4], ['\\s*;\\s*', '?', 0]]);
+
+/**
+ * This regular expression matches valid multiple levels files
+ * @type {string}
+ */
+const MULTI_LEVEL_MATCH = combineRegex([[LVL_VAR_REGEX, '?', 1], ['\\s*\\[\\s*', '', 0], [LVL_OBJ_REGEX, '?', 4],
+  [`,${LVL_OBJ_REGEX}`, '*', 4], ['\\]\\s*', '', 0], ['\\s*;\\s*', '?', 0]]);
+
+/**
+ * This regular expression matches valid single level files (JS only)
+ * @type {string}
+ */
+const SINGLE_LEVEL_MATCH_JS = combineRegex([[LVL_VAR_REGEX, '', 1], [LVL_OBJ_REGEX_JS, '', 4], ['\\s*;\\s*', '', 0]]);
+
+/**
+ * This regular expression matches valid multiple levels files (JS only)
+ * @type {string}
+ */
+const MULTI_LEVEL_MATCH_JS = combineRegex([[LVL_VAR_REGEX, '', 1], ['\\s*\\[\\s*', '', 0], [LVL_OBJ_REGEX_JS, '?', 4],
+  [`,${LVL_OBJ_REGEX_JS}`, '*', 4], ['\\]\\s*', '', 0], ['\\s*;\\s*', '', 0]]);
+
+/**
+ * This regular expression matches valid single level files (JSON only)
+ * @type {string}
+ */
+const SINGLE_LEVEL_MATCH_JSON = combineRegex([[LVL_OBJ_REGEX_JSON, '', 4]]);
+
+/**
+ * This regular expression matches valid multiple levels files (JSON only)
+ * @type {string}
+ */
+const MULTI_LEVEL_MATCH_JSON = combineRegex([['\\s*\\[\\s*', '', 0], [LVL_OBJ_REGEX_JSON, '?', 4],
+  [`,${LVL_OBJ_REGEX_JSON}`, '*', 4], ['\\]\\s*', '', 0]]);
 
 /**
  * A collection of levels
@@ -132,7 +199,7 @@ class LevelSelector {
     if (cLinkArr.length >= 2) {
       const posLvl = decodeURIComponent(cLinkArr[1]);
       window.history.pushState({}, 'Snakebird', cLinkArr[0]);
-      const objRegex = combineRegex([[LVL_OBJ_REGEX_JSON, '']]);
+      const objRegex = combineRegex([[LVL_OBJ_REGEX_JSON, '', 4]]);
       const boardRegex = combineRegex([[BOARD_REGEX, '']]);
       if (posLvl.search(new RegExp(objRegex)) != -1) {
         const lvlObj = JSON.parse(posLvl);
@@ -266,7 +333,7 @@ class LevelSelector {
           opt4 ? '<img title="Tail Biting" class="info-icon" src="css/tail-biting.svg"/>' : ''
         }</td>`;
         if (!opt1 && !opt2 && !opt3 && !opt4) pecTDs = '<td colspan="4">none</td>';
-        tr.innerHTML = `<td>${this._lvlCollections[i].levels[k].name}</td>${pecTDs}`;
+        tr.innerHTML = `<td>${MFhtmlescape(this._lvlCollections[i].levels[k].name)}</td>${pecTDs}`;
         table.appendChild(tr);
         tr.addEventListener('click', () => this.openLevel(i, k));
       }

@@ -7,14 +7,19 @@ and can be bought...
 * ...on [Google Play Store](https://play.google.com/store/apps/details?id=com.NoumenonGames.SnakeBird_Touch)
 * ...on [Apple App Store](https://itunes.apple.com/de/app/snakebird/id1087075743?mt=8)
 
-This __work is still in progress__. You can currently play all the original levels at
-https://m-ff-m.github.io/snakebird/ or clone the repository and open index.html. In
-addition, there are some levels that were used during development - however, they don't pose
-an intellectual challenge. You may also create your own levels using the level editor.
-Currently, levels can only be saved in localStorage. An option to save levels on disk will
-be added in the near future. Visit [github.com/thejoshwolfe/snakefall](https://github.com/thejoshwolfe/snakefall)
+The game is mostly finished. Some small changes could still be made from time to time.
+
+You can currently play all the original levels at
+[https://m-ff-m.github.io/snakebird/](https://m-ff-m.github.io/snakebird/) or clone the
+repository and open index.html. In addition, there are some levels that were used during
+development - however, they don't pose an intellectual challenge. You may also create
+your own levels using the level editor. Levels can be saved in localStorage and/or your
+computer's disk. They can also be shared by link.
+
+Visit [github.com/thejoshwolfe/snakefall](https://github.com/thejoshwolfe/snakefall)
 for more levels (Snakefall levels can be loaded by clicking on 'Open' in the level editor
-and then pasting the Snakefall level link).
+and then pasting the Snakefall level link, thus enabling you to play the Snakefall
+levels with the enhanced graphics of this game).
 
 ## Original vs. JS implementation
 
