@@ -409,6 +409,11 @@ class LevelSelector {
     explDivCreds2.setAttribute('class', 'bordered-text');
     explDivCreds2.innerHTML = 'Original game by Noumenon Games<br />All Snakebird Original levels by Noumenon Games';
     this._containerDiv.appendChild(explDivCreds2);
+    const explDivCreds3 = document.createElement('div');
+    explDivCreds3.setAttribute('class', 'bordered-text');
+    explDivCreds3.innerHTML = 'Snakefall levels by various contributors<br />'
+      + 'See <a target="_blank" href="https://github.com/thejoshwolfe/snakefall/wiki">github.com/thejoshwolfe/snakefall</a> for details';
+    this._containerDiv.appendChild(explDivCreds3);
 
     this._menuParentDiv.innerHTML = '';
     this._menuContainerDiv = document.createElement('div');

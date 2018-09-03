@@ -668,6 +668,8 @@ class LevelEditor {
     if (this._isShutDown) return;
     this._noOps = false;
     this._overlay.style.display = 'none';
+    if (typeof this._pureJSCheckbox === 'object')
+      this._pureJSCheckbox.setAttribute('id', `blub-${Math.random()}`);
   }
 
   /**
@@ -740,13 +742,13 @@ class LevelEditor {
     innerOverlay.appendChild(dskH2);
 
     this._saveAsJS = false;
-    const checkbox = document.createElement('input');
-    checkbox.setAttribute('type', 'checkbox');
-    checkbox.setAttribute('id', 'lvl-edit-checkbox-pure-js');
-    checkbox.setAttribute('value', 'Save pure JS (no JSON)');
-    checkbox.setAttribute('class', 'lvl-menu-checkbox');
-    checkbox.addEventListener('change', () => this._saveAsJS = checkbox.checked);
-    innerOverlay.appendChild(checkbox);
+    this._pureJSCheckbox = document.createElement('input');
+    this._pureJSCheckbox.setAttribute('type', 'checkbox');
+    this._pureJSCheckbox.setAttribute('id', 'lvl-edit-checkbox-pure-js');
+    this._pureJSCheckbox.setAttribute('value', 'Save pure JS (no JSON)');
+    this._pureJSCheckbox.setAttribute('class', 'lvl-menu-checkbox');
+    this._pureJSCheckbox.addEventListener('change', () => this._saveAsJS = this._pureJSCheckbox.checked);
+    innerOverlay.appendChild(this._pureJSCheckbox);
     const checkboxLabel = document.createElement('label');
     checkboxLabel.setAttribute('for', 'lvl-edit-checkbox-pure-js');
     checkboxLabel.setAttribute('class', 'lvl-menu-checkbox-label');

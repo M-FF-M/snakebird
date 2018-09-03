@@ -11,15 +11,18 @@ The game is mostly finished. Some small changes could still be made from time to
 
 You can currently play all the original levels at
 [https://m-ff-m.github.io/snakebird/](https://m-ff-m.github.io/snakebird/) or clone the
-repository and open index.html. In addition, there are some levels that were used during
-development - however, they don't pose an intellectual challenge. You may also create
-your own levels using the level editor. Levels can be saved in localStorage and/or your
-computer's disk. They can also be shared by link.
+repository and open index.html. In addition, all the
+[Snakefall](https://github.com/thejoshwolfe/snakefall) levels available at
+[github.com/thejoshwolfe/snakefall/wiki](https://github.com/thejoshwolfe/snakefall/wiki)
+are also playable, next to some levels that were used during development - however,
+these don't pose an intellectual challenge. You may also create your own levels using
+the level editor. Levels can be saved in localStorage and/or your computer's disk.
+They can also be shared by link.
 
-Visit [github.com/thejoshwolfe/snakefall](https://github.com/thejoshwolfe/snakefall)
-for more levels (Snakefall levels can be loaded by clicking on 'Open' in the level editor
-and then pasting the Snakefall level link, thus enabling you to play the Snakefall
-levels with the enhanced graphics of this game).
+If you prefer the level editor at [github.com/thejoshwolfe/snakefall](https://github.com/thejoshwolfe/snakefall)
+you can also create your levels there and import them by clicking on 'Open' in the
+level editor and then pasting the Snakefall level link, thus enabling you to play
+the Snakefall level with the enhanced graphics of this game.
 
 ## Original vs. JS implementation
 

@@ -59,6 +59,14 @@ div.bordered-text, .lvl-menu-checkbox-label, .text-field-label, .mf-file-selecto
      0.07em  0.07em 0em rgba(55, 117, 161, 1);
 }
 
+div.bordered-text a:link, div.bordered-text a:visited {
+  color: rgba(199, 236, 255, 1);
+}
+
+div.bordered-text a:hover, div.bordered-text a:active {
+  color: rgba(255, 255, 255, 1);
+}
+
 .text-field-label {
   display: block;
   text-align: center;
