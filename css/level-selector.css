@@ -162,11 +162,13 @@ div.bordered-text, .lvl-menu-checkbox-label, .text-field-label {
 .lvl-sel-collection tr {
   background-color: rgba(78, 168, 188, 0);
   -moz-user-select: none;
+  -ms-user-select: none;
   user-select: none;
 }
 
 .lvl-menu-checkbox-label {
   -moz-user-select: none;
+  -ms-user-select: none;
   user-select: none;
 }
 

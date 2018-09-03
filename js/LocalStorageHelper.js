@@ -81,10 +81,42 @@ class LocalStorageHelper {
     for (let i=0; i<DEFAULT_VARS.length; i++)
       this.defaultMap.set(DEFAULT_VARS[i][0], DEFAULT_VARS[i][1]);
     /**
+     * If set to true, local storage can be used; otherwise, local storage cannot be accessed
+     * @type {boolean}
+     */
+    this.useLocalStorage = false;
+    /**
      * Contains the window.localStorage object
      * @type {Storage}
      */
-    this.store = window.localStorage;
+    this.store = null;
+    try {
+      this.store = window.localStorage;
+      this.useLocalStorage = true;
+    } catch (exc) {
+      console.warn('Could not access local storage');
+      console.log(exc);
+    }
+    /**
+     * Fallback store object, saves data only as long as the page is not reloaded
+     * @type {object}
+     */
+    this.fallbackStore = {};
+  }
+
+  _getStoreItem(varname) {
+    if (this.useLocalStorage) return this.store.getItem(varname);
+    else return this.fallbackStore[varname];
+  }
+
+  _setStoreItem(varname, value) {
+    if (this.useLocalStorage) this.store.setItem(varname, value);
+    else this.fallbackStore[varname] = value;
+  }
+
+  _removeStoreItem(varname) {
+    if (this.useLocalStorage) this.store.removeItem(varname);
+    else delete this.fallbackStore[varname];
   }
 
   /**
@@ -93,7 +125,7 @@ class LocalStorageHelper {
    * @return {any} its value (undefined, if the value is not set)
    */
   get(varname) {
-    const inStore = this.store.getItem(`SNAKEBIRD_${varname}`);
+    const inStore = this._getStoreItem(`SNAKEBIRD_${varname}`);
     if (inStore) return JSON.parse(inStore);
     if (this.defaultMap.has(varname)) return deepClone(this.defaultMap.get(varname));
     return undefined;
@@ -107,11 +139,11 @@ class LocalStorageHelper {
   set(varname, value) {
     if (this.defaultMap.has(varname)) {
       if (checkEqual(value, this.defaultMap.get(varname))) {
-        this.store.removeItem(`SNAKEBIRD_${varname}`);
+        this._removeStoreItem(`SNAKEBIRD_${varname}`);
         return;
       }
     }
-    this.store.setItem(`SNAKEBIRD_${varname}`, JSON.stringify(value));
+    this._setStoreItem(`SNAKEBIRD_${varname}`, JSON.stringify(value));
   }
 
   /**
@@ -119,7 +151,7 @@ class LocalStorageHelper {
    * @param {string} varname the name of the variable
    */
   remove(varname) {
-    this.store.removeItem(`SNAKEBIRD_${varname}`);
+    this._removeStoreItem(`SNAKEBIRD_${varname}`);
   }
 }
 

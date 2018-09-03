@@ -26,6 +26,7 @@
   border-bottom: 1px dashed rgba(114, 35, 61, 1);
   border-right: 1px dashed rgba(114, 35, 61, 1);
   -moz-user-select: none;
+  -ms-user-select: none;
   user-select: none;
 }
 
@@ -82,6 +83,7 @@
 
 .lvl-edit-pm div.inner {
   -moz-user-select: none;
+  -ms-user-select: none;
   user-select: none;
   border-radius: 0.5em;
   background-color: rgba(78, 168, 188, 0);
@@ -147,6 +149,7 @@
 .lvl-edit-menu-btn {
   border-radius: 0.5em;
   -moz-user-select: none;
+  -ms-user-select: none;
   user-select: none;
   background-color: rgba(78, 168, 188, 0);
   padding-left: 2em;
@@ -180,8 +183,9 @@
 .lvl-edit-color-btn {
   border-radius: 0.5em;
   -moz-user-select: none;
-  background-clip: border-box;
+  -ms-user-select: none;
   user-select: none;
+  background-clip: border-box;
   border: 0.125em solid rgba(78, 168, 188, 0);
   padding-left: 2em;
   padding-right: 2em;
