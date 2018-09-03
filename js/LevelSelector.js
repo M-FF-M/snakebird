@@ -137,15 +137,23 @@ class LevelSelector {
       if (posLvl.search(new RegExp(objRegex)) != -1) {
         const lvlObj = JSON.parse(posLvl);
         if (lvlObj.board.search(new RegExp(boardRegex)) != -1) {
-          if (lvlObj.notFinished) {
-            this._parentDiv.style.display = 'none';
-            if (this._lvlEditor != null) this._lvlEditor.shutDown();
-            this._lvlEditor = new LevelEditor(document.body, this, lvlObj.board, lvlObj.fallThrough ? true : false,
-              lvlObj.changeGravity ? true : false, lvlObj.options || {}, lvlObj.name);
-            this._lvlEditor.show();
-          } else {
-            this.openRawLevel(new GameState(lvlObj.board), lvlObj.fallThrough ? true : false,
-              lvlObj.changeGravity ? true : false, lvlObj.options || {}, lvlObj.name);
+          try {
+            if (lvlObj.notFinished) {
+              this._parentDiv.style.display = 'none';
+              if (this._lvlEditor != null) this._lvlEditor.shutDown();
+              this._lvlEditor = new LevelEditor(document.body, this, lvlObj.board, lvlObj.fallThrough ? true : false,
+                lvlObj.changeGravity ? true : false, lvlObj.options || {}, lvlObj.name);
+              this._lvlEditor.show();
+            } else {
+              if (this._lvlEditor != null) this._lvlEditor.shutDown();
+              this._lvlEditor = new LevelEditor(document.body, this, lvlObj.board, lvlObj.fallThrough ? true : false,
+                lvlObj.changeGravity ? true : false, lvlObj.options || {}, lvlObj.name);
+              this.openRawLevel(new GameState(lvlObj.board), lvlObj.fallThrough ? true : false,
+                lvlObj.changeGravity ? true : false, lvlObj.options || {}, lvlObj.name);
+            }
+          } catch (exc) {
+            console.warn('Level link was detected but game state construction resulted in exception!');
+            console.log(exc);
           }
         } else console.warn('Level link was detected but board description was invalid!');
       }
