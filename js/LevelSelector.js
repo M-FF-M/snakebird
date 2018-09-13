@@ -555,6 +555,7 @@ class LevelSelector {
     if (this._isShutDown) return;
     this._parentDiv.style.display = 'none';
     this._lastLvlName = this._lvlCollections[col].levels[idx].name;
+    if (this._cGameBoard != null) this._cGameBoard.shutDown();
     this._cGameBoard = fromLevelDescription(document.body, this._lvlCollections[col].levels[idx], STORAGE.get('noCyclicAni'), STORAGE.get('noAni'));
     this._cGameBoard.addEventListener('game won', () => this.levelWon());
     this._cGameBoard.addEventListener('open menu',
@@ -581,6 +582,7 @@ class LevelSelector {
     if (this._isShutDown) return;
     this._parentDiv.style.display = 'none';
     this._lastLvlName = name;
+    if (this._cGameBoard != null) this._cGameBoard.shutDown();
     this._cGameBoard = new GameBoard(document.body, state, fallThrough, changeGravity, options, STORAGE.get('noCyclicAni'), STORAGE.get('noAni'));
     this._cGameBoard.addEventListener('game won', () => this.levelWon());
     this._cGameBoard.addEventListener('open menu',
@@ -646,8 +648,8 @@ class LevelSelector {
    */
   levelFinished() {
     if (this._isShutDown) return;
-    this._cGameBoard.shutDown();
     this._parentDiv.style.display = 'block';
+    if (this._cGameBoard != null) this._cGameBoard.shutDown();
     this._cGameBoard = null;
     if (this._returnToLevelEditor) {
       this.openEditor();
@@ -682,10 +684,12 @@ class LevelSelector {
    * Shut this level selector down -- that is, remove all level selector elements from the parent element
    */
   shutDown() {
-    if (this._cGameBoard != null) this._cGameBoard.shutDown();
-    if (this._lvlEditor != null) this._lvlEditor.shutDown();
-    this._parent.removeChild(this._parentDiv);
-    this._parent.removeChild(this._menuParentDiv);
+    if (!this._isShutDown) {
+      if (this._cGameBoard != null) this._cGameBoard.shutDown();
+      if (this._lvlEditor != null) this._lvlEditor.shutDown();
+      this._parent.removeChild(this._parentDiv);
+      this._parent.removeChild(this._menuParentDiv);
+    }
     this._isShutDown = true;
   }
 }

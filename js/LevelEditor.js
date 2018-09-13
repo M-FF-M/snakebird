@@ -778,6 +778,7 @@ class LevelEditor {
   }
 
   _updateLvlLink() {
+    if (this._isShutDown) return;
     let baseLink = /^([^#?]*)/.exec(location.href)[1];
     if (baseLink.search(/^file:\/\/\//) != -1) baseLink = 'https://m-ff-m.github.io/snakebird/';
     const lvlObj = {
@@ -800,6 +801,7 @@ class LevelEditor {
   }
 
   _getLvlString(lvlObj) {
+    if (this._isShutDown) return '{}';
     if (this._saveAsJS) {
       let ret = '{';
       ret += `\n  name: ${JSON.stringify(lvlObj.name)}`;
@@ -823,6 +825,7 @@ class LevelEditor {
   }
 
   _saveCurrent() {
+    if (this._isShutDown) return;
     let saveStr = this._getLvlString({
       name: this._cLvlName,
       fallThrough: this._fallThrough,
@@ -837,6 +840,7 @@ class LevelEditor {
   }
 
   _saveLocalStorage() {
+    if (this._isShutDown) return;
     this._myLevels = STORAGE.get('myLevels');
     let saveStr = '';
     if (this._saveAsJS) {
@@ -1007,6 +1011,7 @@ class LevelEditor {
   }
 
   _completeFileLoad() {
+    if (this._isShutDown) return;
     if (this._cOpenedLevels.length > 0) {
       this._hideOverlay();
       this._myLevels = STORAGE.get('myLevels');
@@ -1083,6 +1088,7 @@ class LevelEditor {
   }
 
   _saveOpenedOverwrite() {
+    if (this._isShutDown) return;
     this._hideOverlay();
     for (let k=0; k<this._cOpenedLevels.length; k++) {
       let idx = this._myLevels.length;
@@ -1099,6 +1105,7 @@ class LevelEditor {
   }
 
   _saveOpenedSkip() {
+    if (this._isShutDown) return;
     this._hideOverlay();
     for (let k=0; k<this._cOpenedLevels.length; k++) {
       if (!this._levelNames[this._cOpenedLevels[k].name])
@@ -1109,6 +1116,7 @@ class LevelEditor {
   }
 
   _openFileLoaded(obj) {
+    if (this._isShutDown) return;
     this._fileHintDiv.style.display = 'block';
     let cont = obj.content;
     let hintStr = '';
@@ -1192,6 +1200,7 @@ class LevelEditor {
   }
 
   _checkSnakefallLink(val) {
+    if (this._isShutDown) return;
     try {
       this._snakefallLevel = parseSnakefallLevel(val);
       this._linkHintDiv.innerHTML = 'This is a valid Snakefall level.';
@@ -1202,6 +1211,7 @@ class LevelEditor {
   }
 
   _loadSnakefallLevel() {
+    if (this._isShutDown) return;
     if (this._snakefallLevel) {
       this._hideOverlay();
       this._cLvlName = 'Snakefall Level';
@@ -1212,6 +1222,7 @@ class LevelEditor {
   }
 
   _deleteLvl(idx) {
+    if (this._isShutDown) return;
     this._hideOverlay();
     const lvlName = this._myLevels[idx].name;
     const innerOverlay = this._showOverlay('Delete Level', `Are you sure you want to delete the following level: ${lvlName}?`);
@@ -1230,6 +1241,7 @@ class LevelEditor {
   }
 
   _completeDelete(idx) {
+    if (this._isShutDown) return;
     this._hideOverlay();
     this._myLevels.splice(idx, 1);
     STORAGE.set('myLevels', this._myLevels);
@@ -1237,6 +1249,7 @@ class LevelEditor {
   }
 
   _completeOpen(name, board, fallThrough, changeGravity, options) {
+    if (this._isShutDown) return;
     this._hideOverlay();
     this._cLvlName = name;
     this._loadLevel(board, fallThrough, changeGravity, options);
@@ -1248,6 +1261,7 @@ class LevelEditor {
    * Check whether to add the current state to the level stack
    */
   _checkLvlStack() {
+    if (this._isShutDown) return;
     const lastState = this._lvlStack[this._cLvl];
     const cState = this._getStateString(true);
     if (lastState !== cState) {
@@ -2031,8 +2045,11 @@ class LevelEditor {
    * Shut this level editor down -- that is, remove all level editor elements from the parent element
    */
   shutDown() {
-    if (this._cDrawer != null) this._cDrawer.shutDown();
-    this._parent.removeChild(this._parentDiv);
+    if (!this._isShutDown) {
+      if (this._overlay) this._hideOverlay();
+      if (this._cDrawer != null) this._cDrawer.shutDown();
+      this._parent.removeChild(this._parentDiv);
+    }
     this._isShutDown = true;
   }
 }

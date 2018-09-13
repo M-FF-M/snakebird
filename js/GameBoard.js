@@ -263,6 +263,9 @@ class GameBoard {
    * @param {boolean} [noAni] whether or not to animate falling snakes
    */
   setAniVars(noCyclicAni = false, noAni = false) {
+    if (this._isShutDown) return;
+    this._noCyclicAni = noCyclicAni;
+    this._noAni = noAni;
     this._drawer.setAniVars(noCyclicAni, noAni);
   }
 
@@ -555,9 +558,11 @@ class GameBoard {
    * Shut this game board down -- that is, remove all game board elements from the parent element
    */
   shutDown() {
-    this._drawer.shutDown();
-    for (let i=0; i<3; i++)
-      this._parent.removeChild(this._canvasArr[i]);
+    if (!this._isShutDown) {
+      this._drawer.shutDown();
+      for (let i=0; i<3; i++)
+        this._parent.removeChild(this._canvasArr[i]);
+    }
     this._isShutDown = true;
   }
 
