@@ -203,12 +203,10 @@ class GameDrawer {
    * Try to move a snake
    * @param {string} snake the character corresponding to the snake that should be moved
    * @param {number[]} direction the direction of the movement (LEFT, RIGHT, UP or DOWN)
-   * @param {number[]} gravity the direction of gravity (LEFT, RIGHT, UP or DOWN)
    * @return {GameState} the new game state (or null if the move was invalid)
    */
-  tryMove(snake, direction, gravity = DOWN) {
+  tryMove(snake, direction) {
     if (this._isShutDown) return null;
-    this._currentGravity = gravity;
     if (!this._animationRunning && this._state.snakeMap.has(snake) && !this._state.gameEnded) {
       const moveRes = gameTransition(this._state, snake, direction, this._fallThrough, this._state.gravity, true, this._changeGravity, this._options);
       if (moveRes !== null) {
@@ -221,6 +219,7 @@ class GameDrawer {
         // else if (this._aniEnd > 0) console.log('Won!');
         this._aniArray = convertToFullArray(moveRes[2], this._state.snakes.length);
         this._newState = moveRes[3];
+        this._currentGravity = this._newState.gravity;
         this._aniLength = this._aniArray.length - 1;
         this._animationRunning = true;
         this._aniStartTime = (new Date()).getTime();
@@ -1031,12 +1030,12 @@ class GameDrawer {
           borderArr[xcoord][ycoord] = Math.min(1, borderArr[xcoord][ycoord]);
         };
         const setX = (xcoord, val) => {
-          if (lowy >= 0) setN(xcoord, lowy, val * lowyf);
-          if (highy < state.height) setN(xcoord, highy, val * highyf);
+          if (lowy >= 0 && lowy < state.height) setN(xcoord, lowy, val * lowyf);
+          if (highy >= 0 && highy < state.height) setN(xcoord, highy, val * highyf);
         };
         const setY = (ycoord, val) => {
-          if (lowx >= 0) setN(lowx, ycoord, val * lowxf);
-          if (highx < state.width) setN(highx, ycoord, val * highxf);
+          if (lowx >= 0 && lowx < state.width) setN(lowx, ycoord, val * lowxf);
+          if (highx >= 0 && highx < state.width) setN(highx, ycoord, val * highxf);
         };
         const distArrOrig = [cx + 0.5, cy + 0.5, state.width - 0.5 - cx, state.height - 0.5 - cy]; // left, top, right, bottom
         const distArr = [Math.abs(cx + 0.5), Math.abs(cy + 0.5),
