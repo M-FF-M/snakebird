@@ -60,32 +60,47 @@ function convertToFullArray(resArr, snakeNum) {
   for (let i=0; i<resArr.length; i++) {
     const ri = retArr.length;
     retArr.push([]); let duplicateNum = 0;
-    const duplArr = [];
+    const duplArr1 = [];
+    const duplArr2 = [];
     for (let k=0, cidx=0; k<numObj; k++, cidx++) {
       if (objRemAt.includes(k)) {
         retArr[ri].push([-500, -500]);
-        duplArr.push([-500, -500]);
+        duplArr1.push([-500, -500]);
+        duplArr2.push([-500, -500]);
         if (k < snakeNum) cidx--;
       } else {
         const posArr = resArr[i][cidx];
         retArr[ri].push(posArr.slice());
         if (posArr.length == 3) {
           objRemAt.push(k);
-          duplArr.push(posArr.slice(0, 2));
+          duplArr1.push(posArr.slice(0, 2));
+          duplArr2.push(posArr.slice(0, 2));
           if (posArr[2] == 2 && duplicateNum == 0) duplicateNum = 1;
         }
-        else if (posArr.length == 2) duplArr.push(posArr.slice(0, 2));
-        else if (posArr.length == 6) {
+        else if (posArr.length == 2) {
+          duplArr1.push(posArr.slice(0, 2));
+          duplArr2.push(posArr.slice(0, 2));
+        } else if (posArr.length == 6) {
           if (duplicateNum == 0) duplicateNum = 1;
-          duplArr.push(posArr.slice(2, 4));
+          duplArr1.push(posArr.slice(2, 4));
+          duplArr2.push(posArr.slice(2, 4));
         }
         else if (posArr.length == 7) {
           duplicateNum = 2;
-          duplArr.push(posArr.slice(2, 4));
+          if (posArr[6] == 1) {
+            duplArr1.push(posArr.slice(2, 4));
+            duplArr2.push(posArr.slice(2, 4).concat([1]));
+          } else {
+            duplArr1.push(posArr.slice(2, 4).concat([2]));
+            duplArr2.push(posArr.slice(2, 4));
+          }
         }
       }
     }
-    for (let q=0; q<duplicateNum; q++) retArr.push(duplArr);
+    for (let q=0; q<duplicateNum; q++) {
+      if (q == 0) retArr.push(duplArr1);
+      else retArr.push(duplArr2);
+    }
   }
   return retArr;
 }
@@ -287,7 +302,7 @@ function gameTransition(gameState, snake, direction, fallThrough = false, gravit
         if (canBePorted) {
           deleteObject(gameState, cs); // delete from old position
           if (portedOutOfBoard) {
-            retArr[retArr.length - 1][snIdx].push(2);
+            retArr[retArr.length - 1][snIdx].push(1);
             gameState.gameEnded = true;
             gameState.gameWon = false;
             reinsertTargetAndPortals(gameState);
@@ -783,6 +798,7 @@ function canObjectBePorted(gameState, src, tgt, cs, isSnake, fallThrough, grav) 
     }
     if (val > 0 || val == OBSTACLE || val == SPIKE || val == FRUIT) { // portation is blocked
       canBePorted = false; portationBlockPos.push(x); portationBlockPos.push(y);
+      portedOntoTarget = false; portedOutOfBoard = false;
       break;
     }
     if (gameState.target[0] == x && gameState.target[1] == y && isSnake && q == 0
