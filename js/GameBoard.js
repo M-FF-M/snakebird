@@ -503,7 +503,7 @@ class GameBoard {
     if (this._noOps) return;
     this._stateStackIdx = 0;
     this._state = this._stateStack[this._stateStackIdx].clone();
-    this._drawer.setState(this._state);
+    this._drawer.setState(this._state, true);
     this.extraMoveCounter += this.moveCounter;
     this.moveCounter = 0;
     this.drawForeground();
@@ -531,7 +531,7 @@ class GameBoard {
     if (this._stateStackIdx > 0) {
       this._stateStackIdx--;
       this._state = this._stateStack[this._stateStackIdx].clone();
-      this._drawer.setState(this._state);
+      this._drawer.setState(this._state, true);
       this.moveCounter--;
       this.extraMoveCounter++;
       this.drawForeground();
@@ -547,7 +547,7 @@ class GameBoard {
     if (this._stateStackIdx < this._stateStack.length - 1) {
       this._stateStackIdx++;
       this._state = this._stateStack[this._stateStackIdx].clone();
-      this._drawer.setState(this._state);
+      this._drawer.setState(this._state, true);
       this.moveCounter++;
       this.extraMoveCounter--;
       this.drawForeground();

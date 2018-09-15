@@ -16,8 +16,10 @@ repository and open index.html. In addition, all the
 [github.com/thejoshwolfe/snakefall/wiki](https://github.com/thejoshwolfe/snakefall/wiki)
 are also playable, next to some levels with special features: gravity changes
 its direction in clockwise order when a snake eats a fruit in the
-"Which way is up?" levels. Finally, there are some levels that were used
-during development; however, these don't pose an intellectual challenge.
+"Which way is up?" levels and snakes that leave the board enter it again
+on the opposite side in "Endless Space" levels. Finally, there are some
+levels that were used during development; however, these don't pose an
+intellectual challenge.
 
 You may also create your own levels using the level editor. Levels can be saved in
 localStorage and/or your computer's disk. They can also be shared by link.

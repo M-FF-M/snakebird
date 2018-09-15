@@ -233,8 +233,9 @@ class GameDrawer {
   /**
    * Set the game state
    * @param {GameState} state the new game state
+   * @param {boolean} [keepBlockArr] whether to keep the block graphics info
    */
-  setState(state) {
+  setState(state, keepBlockArr = false) {
     if (this._isShutDown) return;
     this._animationRunning = false;
     this._state = state;
@@ -243,7 +244,7 @@ class GameDrawer {
     const stClone = this._state.clone();
     this._snakeQueues = stClone.snakes;
     this._blockQueues = stClone.blocks;
-    this._calcBlockInfoArr();
+    if (!keepBlockArr) this._calcBlockInfoArr();
     this._calcFruitPortalTargetArr();
     this._checkZoomAndCenter();
     this.draw();

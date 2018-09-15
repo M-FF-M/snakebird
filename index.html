@@ -16,6 +16,7 @@
   <script src="https://ajax.googleapis.com/ajax/libs/webfont/1.6.26/webfont.js"></script>
   <script language="javascript" type="text/javascript" src="js/levels/std_lvls.js"></script>
   <script language="javascript" type="text/javascript" src="js/levels/gravity_lvls.js"></script>
+  <script language="javascript" type="text/javascript" src="js/levels/infinity_lvls.js"></script>
   <script language="javascript" type="text/javascript" src="js/levels/snakefall_lvls.js"></script>
   <script language="javascript" type="text/javascript" src="js/levels/dev_lvls.js"></script>
   <script language="javascript" type="text/javascript" src="js/ds.js"></script>
@@ -65,6 +66,7 @@
         levelSel = new LevelSelector(document.body, [
           new LevelCollection('Snakebird Original', std_levels),
           new LevelCollection('Which way is up?', gravity_levels),
+          new LevelCollection('Endless Space', infinity_levels),
           new LevelCollection('Snakefall', snakefall_levels),
           new LevelCollection('Development Levels', dev_levels)
         ]);
