@@ -361,7 +361,7 @@ class LevelSelector {
     explDivInstr3.setAttribute('class', 'bordered-text');
     explDivInstr3.innerHTML = 'In addition, this version of Snakebird supports two other special features: '
       + 'levels where snakebirds and blocks that move out of the board appear again on the other side and '
-      + 'levels where eating of a fruit causes gravity to change direction (in clockwise order).';
+      + 'levels where eating a fruit causes gravity to change direction (in clockwise order).';
     this._containerDiv.appendChild(explDivInstr3);
 
     const aContr = document.createElement('a');
